@@ -1,0 +1,14 @@
+# instance data / secrets
+inventory/
+secrets/
+*.env
+*.secret
+siem/exports/
+
+# the build plan stays private, out of git
+docs/PLAN.md
+
+# lab artefacts (polymorphism variants, dumps): never in the repo
+polymorphism/variants/
+*.bin
+ground_truth_*.json
