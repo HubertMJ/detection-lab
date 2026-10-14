@@ -12,6 +12,25 @@ on behaviour still opens one incident.
 | A synthetic replay of scenario C, the data behind the preview | [replay/scenario-c.json](replay/scenario-c.json) |
 | The preview on the site | https://hubertjablon.ski/lab/ (source: [hubertjablon.ski](https://github.com/HubertMJ/hubertjablon.ski)) |
 
+## How it fits together
+
+```mermaid
+flowchart LR
+    subgraph NOW["Today"]
+        R[("replay/scenario-c.json<br/>synthetic, sample: true")] --> P["hubertjablon.ski/lab/<br/>design preview"]
+    end
+    subgraph NEXT["Possible next step (no Windows)"]
+        GEN["generator<br/>4 copies: new hash, new name"] --> EV["Sysmon-format events<br/>+ ground truth"]
+        EV --> OS[("OpenSearch on siem01<br/>Sigma rules · Alerting monitors")]
+        OS --> V["validation<br/>ground truth vs findings,<br/>coverage, time to detect"]
+    end
+    GEN -. same format .-> R
+```
+
+The preview reads the replay file and computes everything in the browser; nothing calls the SIEM.
+The generator would write events in the same shape, so the page and a real run can be compared
+one to one.
+
 ## Decisions (2026-10-14)
 
 - The Windows lab (GOAD) is not built on the current hardware: it needs roughly 28-36 GB of RAM.
