@@ -37,9 +37,19 @@ export interface LabVariant {
   findings: LabFinding[];
 }
 
+/** A real run's provenance: present when the page drew a run, absent on the synthetic sample. */
+export interface LabRun {
+  id: string;
+  /** "generated": synthetic events, real detection (variant A); "isolated-vm": a real run (B). */
+  mode: "generated" | "isolated-vm";
+  started_at: string;
+  finished_at: string;
+}
+
 export interface LabReplay {
   schema: 1;
   sample: boolean;
+  run?: LabRun;
   scenario: { id: string; title: string; summary: string };
   artefact: { name: string; path: string };
   /** Where every copy calls home (ip:port): the same whatever the copy's name or hash. */
@@ -56,6 +66,10 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
 /** A replay is drawn only when every part of it is what the panel reads. */
 export function isLabReplay(v: unknown): v is LabReplay {
   if (!isObj(v) || v.schema !== 1 || typeof v.sample !== "boolean" || !isNum(v.risk_threshold) || !isStr(v.beacon)) return false;
+  if (v.run !== undefined) {
+    const r = v.run;
+    if (!isObj(r) || !isStr(r.id) || (r.mode !== "generated" && r.mode !== "isolated-vm") || !isStr(r.started_at) || !isStr(r.finished_at)) return false;
+  }
   const s = v.scenario;
   const a = v.artefact;
   if (!isObj(s) || !isStr(s.id) || !isStr(s.title) || !isStr(s.summary)) return false;

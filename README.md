@@ -24,18 +24,18 @@ up one to one.
 
 ```mermaid
 flowchart LR
-    subgraph GEN["Generator (lab/, python)"]
+    subgraph GEN["Generator (lab/, python) — run.py drives one run (runner image, daily CronJob)"]
         G["generate.py<br/>4 copies: new hash, new name"] --> EV["events.ndjson (sdp-lab)<br/>+ run document (ground truth)"]
         EV --> IDX["indexer.py<br/>bulk-index on siem01"]
         IDX --> OS[("OpenSearch on siem01<br/>Sigma rules · Alerting monitors<br/>(commercial-SIEM-equivalent)")]
-        OS --> VAL["validate.py<br/>findings vs ground truth,<br/>coverage, time to detect"]
+        OS -. "poll findings + alerts" .-> VAL["validate.py<br/>findings vs ground truth,<br/>coverage, time to detect"]
         EV -. run doc .-> VAL
         VAL --> RUN[("final run document<br/>index lab-runs")]
     end
     subgraph WEB["Web app (web/, its own signed image)"]
         PAGE["/lab/ preview<br/>nginx-unprivileged :8080"]
     end
-    RUN -. "GET /cluster/api/lab/latest" .-> PAGE
+    RUN -. "GET /cluster/api/lab/latest<br/>(real run, or synthetic fallback)" .-> PAGE
     SAMPLE[("web/src/lib/lab-replay.json<br/>synthetic sample, the fallback")] --> PAGE
 ```
 
@@ -64,10 +64,24 @@ a real test binary belongs to variant B (an isolated VM), which is out of scope 
   - `run.json` — the ground-truth / run document in the site's `LabReplay` shape (`schema: 1`,
     `sample: false`), with lab labels only (`ws1`/`ws2`, `lab beacon :<port>`) and findings left
     empty for the validator to fill. Under 64 KiB.
-- **`validate.py`** reads `run.json` and the real detections (`--findings`), then fills per-copy
-  `caught_by_hash` and each finding's `delay_s`, the `incident` (when a behaviour-keyed alert opens
-  it and after which copy), and ATT&CK coverage (expected vs detected). The hash rule catches copy 1
-  only; the beacon monitor opens one incident. It emits only lab labels, never real hosts/addresses.
+- **`validate.py`** reads `run.json` and the real detections, then fills per-copy `caught_by_hash`
+  and each finding's `delay_s`, the `incident` (when a behaviour-keyed alert opens it and after which
+  copy), and ATT&CK coverage (expected vs detected). The hash rule catches copy 1 only; the beacon
+  monitor opens one incident. It takes either pre-parsed detections (`--findings`) or the raw
+  OpenSearch responses straight from the SIEM: `--raw-findings` (a Security Analytics findings
+  response) and `--raw-alerts` (an Alerting alerts response). It maps each finding to a run rule by
+  the query's ATT&CK tag, keeps only findings whose matched document belongs to this run (so an
+  isolated-VM copy from another run is ignored), uses the detector/alert time as the detection time,
+  and opens the incident at the copy that first makes two distinct hashes beacon to one address. It
+  emits only lab labels, never real hosts/addresses, and stays under 64 KiB.
+- **`run.py`** drives one real run end to end, the entrypoint a cluster CronJob invokes: it generates
+  the events and run document (`generate.py`), bulk-indexes the events into `sdp-lab` over mutual TLS
+  with the `lab-writer` identity (`indexer.py`), polls Security Analytics findings and Alerting alerts
+  for the run (by `lab.run_id` and a time window) until the detector and monitor have fired or it
+  times out, validates the real detections against the ground truth (`validate.py`), and indexes the
+  final run document into the `lab-runs` index over mutual TLS with the `lab-validator` identity.
+  Every endpoint, index, detector/monitor id and certificate comes from `--flags` or `LAB_*`
+  environment variables — no defaults, no secrets in the file — and it exits non-zero on any failure.
 - **`indexer.py`** bulk-POSTs `events.ndjson` into an OpenSearch data stream over mutual TLS
   (`--cert`/`--key`, the `lab-writer` identity on siem01). Bulk `create` with no `_id`, as a data
   stream requires. No credentials in the file.
@@ -81,6 +95,19 @@ python3 -m unittest discover -s test -p 'test_*.py'
 
 Detection content (the Sigma rules and the Alerting monitor) lives in the self-defending-portfolio
 `siem/` tree; the SIEM is a commercial-SIEM-equivalent OpenSearch instance with Security Analytics.
+
+### The runner image (`runner/`)
+
+`run.py` ships as its own signed container image, `ghcr.io/hubertmj/detection-lab/lab-runner`, so a
+cluster CronJob can drive the daily run without a Python toolchain on the node. The base is
+distroless `python3` (nonroot, no shell, read-only root) pinned by tag *and* digest; because `run.py`
+is standard library only, nothing else is installed and the image stays tiny.
+[`.github/workflows/build-runner.yml`](.github/workflows/build-runner.yml) runs the `unittest` suite
+on every PR, then on `main` builds the image, gates it with Trivy (fixable CRITICAL/HIGH fail the
+build), emits an SPDX SBOM and signs the image and SBOM with cosign keyless — the same pipeline as
+the web image. The two share one detection-lab workflow identity, so the cluster's Kyverno policy
+trusts both. The image bakes in no endpoints or secrets: the CronJob supplies them through `LAB_*`
+environment variables and mounts the `lab-writer`/`lab-validator` certificates.
 
 ## The web app (`web/`)
 
@@ -98,8 +125,12 @@ emits an SPDX SBOM and signs the image and SBOM with cosign keyless. The image i
 - The Content-Security-Policy is character-for-character the landing site's: `default-src 'none'`,
   `style-src 'self'`, Trusted Types enforced (no inline styles, no `innerHTML`), and
   `connect-src 'self'` so the page can call `/cluster/api/lab/latest` same-origin.
-- The page keeps the bundled `src/lib/lab-replay.json` as the labelled sample fallback; the fetch of
-  the cluster API is a seam, ready for the endpoint that returns a real run document.
+- The page keeps the bundled `src/lib/lab-replay.json` as the labelled synthetic-sample fallback.
+  When `/cluster/api/lab/latest` answers with a valid real run (`sample: false`), the page draws it
+  instead and labels it by mode: a generated run reads "events generated, detection real", an
+  isolated-VM run "a real run in an isolated lab", each shown with the run date (`run.finished_at`).
+  Only the fallback carries the "Synthetic sample" label. The label is the only visible difference;
+  everything else the page computes in the browser from the same `LabReplay` shape.
 
 ```sh
 cd web

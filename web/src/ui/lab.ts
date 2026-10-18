@@ -56,13 +56,7 @@ export function mountLab(root: HTMLElement, data: unknown): void {
     h(
       "div",
       { class: "panel lab" },
-      h(
-        "p",
-        { class: "lab-note" },
-        h("span", { class: "tag tag--arm" }, "Design preview"),
-        " ",
-        d.sample ? "Synthetic sample: generated events, not a run on real machines, and nothing here runs live." : "",
-      ),
+      note(d),
       h("h3", { class: "lab-title" }, `Scenario ${d.scenario.id}: ${d.scenario.title}`),
       h("p", { class: "small lab-summary" }, d.scenario.summary),
       h(
@@ -79,6 +73,31 @@ export function mountLab(root: HTMLElement, data: unknown): void {
     ),
   );
   draw();
+}
+
+const RUN_DATE = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
+
+/** The label above the panel: a synthetic-sample fallback, or a real run with its mode and date. */
+function note(d: LabReplay): HTMLElement {
+  if (d.sample || !d.run) {
+    return h(
+      "p",
+      { class: "lab-note" },
+      h("span", { class: "tag tag--arm" }, "Design preview"),
+      " ",
+      "Synthetic sample: generated events, not a run on real machines, and nothing here runs live.",
+    );
+  }
+  const mode = d.run.mode === "generated" ? "events generated, detection real" : "a real run in an isolated lab";
+  return h(
+    "p",
+    { class: "lab-note" },
+    h("span", { class: "tag tag--detect" }, "Real run"),
+    " ",
+    mode,
+    " · ",
+    h("time", { datetime: d.run.finished_at }, RUN_DATE.format(new Date(d.run.finished_at))),
+  );
 }
 
 /** The latest copy, field by field: what the attacker changed is marked, what stayed the same is not. */

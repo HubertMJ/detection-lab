@@ -17,6 +17,10 @@ const arg = (n, d) => {
 };
 const dir = resolve(arg("--dir", "dist"));
 const port = Number(arg("--port", "4173"));
+// The cluster API seam the page fetches. Deterministic here: a fast 404 (so the bundled-sample
+// fallback is exercised and nothing hangs), or, when --lab-run <file> is given, that file as a 200.
+const API = "/cluster/api/lab/latest";
+const labRunFile = arg("--lab-run", null);
 
 // Test-only stand-in for the main site (/), which another image serves on this origin. The e2e slide
 // tests navigate from /lab/ to / to prove the hand-played "back to home" slide (styles.css, theme.ts);
@@ -37,6 +41,23 @@ const HEADERS = Object.fromEntries(
 
 createServer(async (req, res) => {
   let path = normalize(decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname));
+  // The API seam answers immediately, before any filesystem work: a fixture 200 when configured,
+  // otherwise a fast 404. The page never blocks on it either way.
+  if (path === API) {
+    if (labRunFile) {
+      try {
+        const body = await readFile(resolve(labRunFile));
+        res.writeHead(200, { ...HEADERS, "content-type": TYPES[".json"] });
+        res.end(body);
+        return;
+      } catch {
+        // Missing or unreadable fixture: fall through to a 404, the fallback path.
+      }
+    }
+    res.writeHead(404, { ...HEADERS, "content-type": "text/plain" });
+    res.end("not found\n");
+    return;
+  }
   if (path.endsWith("/")) path += "index.html";
   const file = join(dir, path);
   try {
