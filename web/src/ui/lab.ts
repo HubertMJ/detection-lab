@@ -97,7 +97,7 @@ function copyCard(d: LabReplay, s: LabState): HTMLElement {
     ["sha256", shortHash(v.sha256), v.sha256 !== first.sha256],
     ["host", v.host.split(".")[0].toUpperCase(), false],
     ["run key", String(reg["registry.path"] ?? "").split("\\").pop() ?? "", false],
-    ["calls", `${net["destination.ip"]}:${net["destination.port"]}`, false],
+    ["calls", net["destination.ip"] ? `${net["destination.ip"]}:${net["destination.port"]}` : "—", false],
   ];
   return h(
     "dl",
