@@ -5,20 +5,29 @@
 # pipeline as the web image; self-defending-portfolio's Kyverno admits it only with a signature whose
 # identity is that workflow on main.
 #
-# The base is pinned by tag *and* digest (a tag is mutable, a digest is not). Distroless python3 has
-# no shell and no package manager, so the attack surface is tiny; run.py is standard library only, so
-# nothing else need be installed. Every endpoint, index, id and certificate reaches run.py through
-# the environment or arguments the CronJob sets; nothing is baked in.
+# Base: python on Alpine, pinned by tag *and* digest (a tag is mutable, a digest is not), and patched
+# in place from Alpine's repositories like the web image (distroless/python3-debian12 was dropped: its
+# Debian base carried fixable HIGH CVEs that Trivy gates on and a distroless image has no package
+# manager to patch them). run.py is standard library only, so pip and setuptools are removed (they
+# carried the only remaining fixable HIGH findings and nothing here needs them). Every endpoint, index,
+# id and certificate reaches run.py through the environment or arguments the CronJob sets.
+FROM python:3.13-alpine@sha256:2d9aefe2fef018a7eb2c13064c89c71929800fd2e5dccdbf52ea5da5bb8d929a
 
-# gcr.io/distroless/python3-debian12:nonroot (nonroot = uid 65532, no shell).
-FROM gcr.io/distroless/python3-debian12:nonroot@sha256:7d1042ce588ab97019fe95c24ffca7bc5a82ccdac572511d5e09bda4435c89c5
+# Patch the base in place, then strip pip/setuptools/ensurepip (unused; their CVEs would fail Trivy).
+RUN apk --no-cache upgrade \
+ && python3 -m pip uninstall -y pip setuptools 2>/dev/null; \
+    rm -rf /usr/local/lib/python3.*/ensurepip \
+           /usr/local/lib/python3.*/site-packages/pip* \
+           /usr/local/lib/python3.*/site-packages/setuptools* \
+           /usr/local/bin/pip*; \
+    true
 
 WORKDIR /app
 
 # Only the generator/validator/driver. No tests, no web app, no git metadata.
 COPY lab/ /app/lab/
 
-# Already nonroot in the base; stated so the Deployment/CronJob can assert the uid.
+# 65532 (nonroot) is asserted by the CronJob's securityContext.
 USER 65532
 
 LABEL org.opencontainers.image.title="detection-lab runner" \
