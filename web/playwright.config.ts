@@ -15,5 +15,5 @@ export default defineConfig({
     // slide by hand there.
     { name: "firefox", use: { ...devices["Desktop Firefox"], launchOptions: {} }, grep: /@firefox/ },
   ],
-  webServer: { command: "node scripts/serve.mjs --port 4290", url: "http://127.0.0.1:4290/lab/", reuseExistingServer: !process.env.CI },
+  webServer: { command: "node scripts/serve.mjs --port 4290 --e2e", url: "http://127.0.0.1:4290/lab/", reuseExistingServer: !process.env.CI },
 });

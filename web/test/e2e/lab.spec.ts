@@ -1,20 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 // The detection lab's preview, served standalone at /lab/. The main site (/) lives in another image
-// on the same origin; these tests stand it in with a page carrying this page's own <head>, so the
-// cross-document slide runs exactly as it does live.
-
-// A minimal same-origin stand-in for the main site, built from the lab page's head and CSP, so a
-// navigation to / behaves like the real cross-origin-free cluster origin.
-async function stubHome(page: import("@playwright/test").Page): Promise<void> {
-  await page.goto("/lab/");
-  const head = await page.evaluate(() => [...document.querySelectorAll('head link[rel="stylesheet"], head script')].map((e) => e.outerHTML).join(""));
-  const csp = (await page.request.get("/lab/")).headers()["content-security-policy"];
-  await page.route(
-    (u) => u.pathname === "/" || u.pathname === "/index.html",
-    (r) => r.fulfill({ contentType: "text/html", headers: { "content-security-policy": csp }, body: `<!DOCTYPE html><html lang="en"><head><title>home</title>${head}</head><body><header class="site-header"><a class="brand" href="/">home</a></header><main class="landing">home</main></body></html>` }),
-  );
-}
+// on the same origin; for the slide tests, scripts/serve.mjs --e2e stands it in with a page carrying
+// this page's own <head>, so the cross-document slide runs exactly as it does live (a real served
+// page, so it works in Firefox too, where route interception misses top-level navigations).
 
 test.describe("detection lab preview at /lab/", () => {
   test("renames every copy by default; picking a copy redraws the panel and never scrolls the page", async ({ page }) => {
@@ -80,7 +69,6 @@ test.describe("detection lab preview at /lab/", () => {
   });
 
   test("moving home slides like switching desktops: going back slides the other way; the header stays", async ({ page }) => {
-    await stubHome(page);
     await page.addInitScript(() => {
       addEventListener("pagereveal", (e) => {
         const vt = (e as Event & { viewTransition?: { types: Set<string> } | null }).viewTransition;
@@ -95,7 +83,6 @@ test.describe("detection lab preview at /lab/", () => {
   });
 
   test("@firefox Firefox slides home by hand: the page slides out, then the main site slides in", async ({ page }) => {
-    await stubHome(page);
     await page.addInitScript(() => {
       const seen: string[] = [];
       (window as unknown as { slides: string[] }).slides = seen;
