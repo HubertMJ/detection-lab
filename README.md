@@ -5,37 +5,48 @@ detections that should catch them. The flagship case is polymorphism: every copy
 program gets a new hash and a new name, the hash rule misses all but the first, and detection keyed
 on behaviour still opens one incident.
 
-**Status: variant A (generated events, real detection) implemented. See [`lab/`](lab/).**
+**Status: the generator (variant A) and the web app are both here. See [`lab/`](lab/) and
+[`web/`](web/).**
+
+This repository is now a full project: the **generator** (`lab/`, python) that writes the events and
+the run document, and the **web app** (`web/`, TypeScript) that serves the `/lab/` preview as its own
+signed container image. The two share one data shape (`LabReplay`), so the page and a real run line
+up one to one.
 
 | What | Where |
 |---|---|
 | The generator, validator and indexer (python3 stdlib only) | [lab/](lab/) |
-| A synthetic replay of scenario C, the data behind the preview | [replay/scenario-c.json](replay/scenario-c.json) |
-| The preview on the site | https://hubertjablon.ski/lab/ (source: [hubertjablon.ski](https://github.com/HubertMJ/hubertjablon.ski)) |
+| A synthetic replay of scenario C, the labelled sample | [replay/scenario-c.json](replay/scenario-c.json) |
+| The web app: the `/lab/` preview, its own nginx image | [web/](web/) |
+| The preview, live | https://hubertjablon.ski/lab/ |
 
 ## How it fits together
 
 ```mermaid
 flowchart LR
-    subgraph NOW["Today"]
-        R[("replay/scenario-c.json<br/>synthetic, sample: true")] --> P["hubertjablon.ski/lab/<br/>design preview"]
+    subgraph GEN["Generator (lab/, python)"]
+        G["generate.py<br/>4 copies: new hash, new name"] --> EV["events.ndjson (sdp-lab)<br/>+ run document (ground truth)"]
+        EV --> IDX["indexer.py<br/>bulk-index on siem01"]
+        IDX --> OS[("OpenSearch on siem01<br/>Sigma rules · Alerting monitors<br/>(commercial-SIEM-equivalent)")]
+        OS --> VAL["validate.py<br/>findings vs ground truth,<br/>coverage, time to detect"]
+        EV -. run doc .-> VAL
+        VAL --> RUN[("final run document<br/>index lab-runs")]
     end
-    subgraph A["Variant A: generated events, real detection"]
-        GEN["lab/generate.py<br/>4 copies: new hash, new name"] --> EV["events.ndjson (sdp-lab)<br/>+ run.json ground truth"]
-        EV --> IDX["lab/indexer.py<br/>bulk-index on siem01"]
-        IDX --> OS[("OpenSearch on siem01<br/>Sigma rules · Alerting monitors")]
-        OS --> VAL["lab/validate.py<br/>findings vs ground truth,<br/>coverage, time to detect"]
-        EV -. run.json .-> VAL
-        VAL --> FIN["final run document<br/>-> hubertjablon.ski/lab/"]
+    subgraph WEB["Web app (web/, its own signed image)"]
+        PAGE["/lab/ preview<br/>nginx-unprivileged :8080"]
     end
-    GEN -. same format .-> R
+    RUN -. "GET /cluster/api/lab/latest" .-> PAGE
+    SAMPLE[("web/src/lib/lab-replay.json<br/>synthetic sample, the fallback")] --> PAGE
 ```
 
 Variant A executes nothing: `generate.py` only writes synthetic JSON (the events a run would
 produce, plus the ground truth). The events are indexed into the real SIEM, its own Sigma rules and
 Alerting monitors do the detecting, and `validate.py` compares what they caught against the ground
-truth. The preview reads a replay file and computes everything in the browser; the generator writes
-events in the same shape, so the page and a real run can be compared one to one.
+truth. The web app reads a `LabReplay` and computes everything in the browser: it fetches the latest
+real run from the cluster API (`/cluster/api/lab/latest`, same origin) and, until that endpoint
+answers — and in the standalone image, which has no API — it falls back to the bundled synthetic
+sample. The generator writes events in the same shape, so the page and a real run can be compared
+one to one.
 
 ## The generator (`lab/`)
 
@@ -70,6 +81,34 @@ python3 -m unittest discover -s test -p 'test_*.py'
 
 Detection content (the Sigma rules and the Alerting monitor) lives in the self-defending-portfolio
 `siem/` tree; the SIEM is a commercial-SIEM-equivalent OpenSearch instance with Security Analytics.
+
+## The web app (`web/`)
+
+The `/lab/` preview, a static page served by its own hardened nginx image. It is built, scanned,
+SBOM'd and signed exactly like the landing site: a two-stage Dockerfile (esbuild bundle + unit tests,
+then `nginx-unprivileged` on `:8080`, read-only, uid 101), and
+[`.github/workflows/build-image.yml`](.github/workflows/build-image.yml) runs Playwright on every
+PR, then on `main` builds the image, gates it with Trivy (fixable CRITICAL/HIGH fail the build),
+emits an SPDX SBOM and signs the image and SBOM with cosign keyless. The image is
+`ghcr.io/hubertmj/detection-lab/lab`; the cluster's Kyverno admits it only with that signature.
+
+- Everything the image serves lives under the `/lab/` prefix (`/lab/` for the page,
+  `/lab/assets/` for the content-hashed bundles), so it never collides with the landing site on the
+  same origin.
+- The Content-Security-Policy is character-for-character the landing site's: `default-src 'none'`,
+  `style-src 'self'`, Trusted Types enforced (no inline styles, no `innerHTML`), and
+  `connect-src 'self'` so the page can call `/cluster/api/lab/latest` same-origin.
+- The page keeps the bundled `src/lib/lab-replay.json` as the labelled sample fallback; the fetch of
+  the cluster API is a seam, ready for the endpoint that returns a real run document.
+
+```sh
+cd web
+npm ci --ignore-scripts
+npm run lint        # tsc --noEmit
+npm test            # vitest (the replay model)
+npm run build       # -> dist/lab/
+npm run test:e2e    # Playwright against the built, served page
+```
 
 ## Decisions (2026-10-14)
 
