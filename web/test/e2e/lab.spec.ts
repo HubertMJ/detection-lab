@@ -21,12 +21,15 @@ test.describe("detection lab preview at /lab/", () => {
   });
 
   // The real run comes from /cluster/api/lab/latest; when that answers with a valid run, the panel
-  // draws it (a real run, so no "synthetic sample" label).
+  // draws it: no "synthetic sample" label, the mode wording for a generated run, and the run date.
   test("draws the run the cluster API returns", async ({ page }) => {
     await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(REAL_RUN) }));
     await page.goto("/lab/");
     await expect(page.locator(".lab")).toBeVisible();
     await expect(page.locator(".lab-note")).not.toContainText("Synthetic sample");
+    await expect(page.locator(".lab-note")).toContainText("events generated, detection real");
+    await expect(page.locator(".lab-note time")).toContainText("3 Feb 2026");
+    await expect(page.locator(".lab-note time")).toHaveAttribute("datetime", "2026-02-03T10:00:00Z");
     await expect(page.locator(".lab-table tbody tr")).not.toHaveCount(0);
   });
 
@@ -103,6 +106,7 @@ test.describe("detection lab preview at /lab/", () => {
 const REAL_RUN = {
   schema: 1,
   sample: false,
+  run: { id: "lab-20260203T100000Z-abc123", mode: "generated", started_at: "2026-02-03T09:00:00Z", finished_at: "2026-02-03T10:00:00Z" },
   scenario: { id: "C", title: "stand-in", summary: "stand-in" },
   artefact: { name: "update-helper.exe", path: "C:\\x\\update-helper.exe" },
   beacon: "lab beacon :8443",

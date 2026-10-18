@@ -51,4 +51,11 @@ describe("detection lab replay", () => {
     expect(isLabReplay({ ...d, variants: [{ ...d.variants[0], findings: [{ rule: "nope", delay_s: 1 }] }] })).toBe(false);
     expect(shortHash("a".repeat(64))).toBe(`${"a".repeat(12)}…aaaa`);
   });
+
+  it("accepts a real run's provenance and rejects a malformed one", () => {
+    const run = { id: "lab-20260203T100000Z-abc123", mode: "generated" as const, started_at: "2026-02-03T09:00:00Z", finished_at: "2026-02-03T10:00:00Z" };
+    expect(isLabReplay({ ...d, sample: false, run })).toBe(true);
+    expect(isLabReplay({ ...d, sample: false, run: { ...run, mode: "live" } })).toBe(false);
+    expect(isLabReplay({ ...d, sample: false, run: { ...run, finished_at: 0 } })).toBe(false);
+  });
 });
