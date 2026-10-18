@@ -1,0 +1,293 @@
+{
+  "schema": 1,
+  "sample": true,
+  "scenario": {
+    "id": "C",
+    "title": "A new hash and a new name for every copy",
+    "summary": "A harmless test program, rebuilt and renamed four times so each copy has a new SHA-256 and a new file name, is run on two lab workstations. It only writes a Run key and calls a lab-internal address every 60 s."
+  },
+  "artefact": {
+    "name": "update-helper.exe",
+    "path": "C:\\Users\\j.nowak\\AppData\\Local\\Temp\\update-helper.exe"
+  },
+  "risk_threshold": 100,
+  "rules": [
+    {
+      "id": "ioc-update-helper-sha256",
+      "title": "Known-bad hash",
+      "kind": "sigma",
+      "technique": "T1204.002",
+      "score": 50,
+      "logic": "process.hash.sha256 is the hash from the first sighting"
+    },
+    {
+      "id": "run-key-from-temp",
+      "title": "Run key written from a Temp folder",
+      "kind": "sigma",
+      "technique": "T1547.001",
+      "score": 20,
+      "logic": "a registry Run value set by a process under \\AppData\\Local\\Temp\\"
+    },
+    {
+      "id": "same-name-new-hash",
+      "title": "Same name, new hash",
+      "kind": "monitor",
+      "technique": "T1027",
+      "score": 30,
+      "logic": "one process.name, a SHA-256 not seen for it in 30 days (first-seen per name)"
+    },
+    {
+      "id": "lab-beaconing",
+      "title": "Beaconing",
+      "kind": "monitor",
+      "technique": "T1071.001",
+      "score": 10,
+      "logic": "5+ connections from one process to one address at a steady interval within 10 min"
+    }
+  ],
+  "variants": [
+    {
+      "n": 1,
+      "host": "ws1.lab.local",
+      "sha256": "1a849258c42f9603a2a8715cb1a490b5269a0a8d0f8b80616bb6e9fce381c8a6",
+      "events": [
+        {
+          "@timestamp": "2026-10-11T09:00:00.000Z",
+          "event.code": "1",
+          "event.action": "Process Create",
+          "host.name": "ws1.lab.local",
+          "process.name": "update-helper.exe",
+          "process.executable": "C:\\Users\\j.nowak\\AppData\\Local\\Temp\\update-helper.exe",
+          "process.hash.sha256": "1a849258c42f9603a2a8715cb1a490b5269a0a8d0f8b80616bb6e9fce381c8a6",
+          "process.parent.name": "explorer.exe"
+        },
+        {
+          "@timestamp": "2026-10-11T09:00:02.000Z",
+          "event.code": "13",
+          "event.action": "Registry value set",
+          "host.name": "ws1.lab.local",
+          "process.name": "update-helper.exe",
+          "registry.path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\UpdateHelper"
+        },
+        {
+          "@timestamp": "2026-10-11T09:00:05.000Z",
+          "event.code": "3",
+          "event.action": "Network connection",
+          "host.name": "ws1.lab.local",
+          "process.name": "update-helper.exe",
+          "destination.ip": "10.66.0.10",
+          "destination.port": 8080
+        }
+      ],
+      "ground_truth": {
+        "@timestamp": "2026-10-11T09:00:00.000Z",
+        "host": "ws1.lab.local",
+        "techniques": [
+          "T1204.002",
+          "T1547.001",
+          "T1071.001"
+        ],
+        "variant_sha256": "1a849258c42f9603a2a8715cb1a490b5269a0a8d0f8b80616bb6e9fce381c8a6"
+      },
+      "findings": [
+        {
+          "rule": "ioc-update-helper-sha256",
+          "delay_s": 58
+        },
+        {
+          "rule": "run-key-from-temp",
+          "delay_s": 61
+        },
+        {
+          "rule": "lab-beaconing",
+          "delay_s": 312
+        }
+      ],
+      "renamed": "update-helper.exe"
+    },
+    {
+      "n": 2,
+      "host": "ws2.lab.local",
+      "sha256": "4465b5331314995fb3f36ffd1f3bc1920d06975bdc8d3cfb8ec522eeff805bbe",
+      "events": [
+        {
+          "@timestamp": "2026-10-11T09:09:00.000Z",
+          "event.code": "1",
+          "event.action": "Process Create",
+          "host.name": "ws2.lab.local",
+          "process.name": "update-helper.exe",
+          "process.executable": "C:\\Users\\j.nowak\\AppData\\Local\\Temp\\update-helper.exe",
+          "process.hash.sha256": "4465b5331314995fb3f36ffd1f3bc1920d06975bdc8d3cfb8ec522eeff805bbe",
+          "process.parent.name": "explorer.exe"
+        },
+        {
+          "@timestamp": "2026-10-11T09:09:02.000Z",
+          "event.code": "13",
+          "event.action": "Registry value set",
+          "host.name": "ws2.lab.local",
+          "process.name": "update-helper.exe",
+          "registry.path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\UpdateHelper"
+        },
+        {
+          "@timestamp": "2026-10-11T09:09:05.000Z",
+          "event.code": "3",
+          "event.action": "Network connection",
+          "host.name": "ws2.lab.local",
+          "process.name": "update-helper.exe",
+          "destination.ip": "10.66.0.10",
+          "destination.port": 8080
+        }
+      ],
+      "ground_truth": {
+        "@timestamp": "2026-10-11T09:09:00.000Z",
+        "host": "ws2.lab.local",
+        "techniques": [
+          "T1204.002",
+          "T1547.001",
+          "T1071.001",
+          "T1027"
+        ],
+        "variant_sha256": "4465b5331314995fb3f36ffd1f3bc1920d06975bdc8d3cfb8ec522eeff805bbe"
+      },
+      "findings": [
+        {
+          "rule": "run-key-from-temp",
+          "delay_s": 64
+        },
+        {
+          "rule": "same-name-new-hash",
+          "delay_s": 118,
+          "only": "same-name"
+        },
+        {
+          "rule": "lab-beaconing",
+          "delay_s": 305
+        }
+      ],
+      "renamed": "OneDriveSync.exe"
+    },
+    {
+      "n": 3,
+      "host": "ws1.lab.local",
+      "sha256": "82ff65dd16ae8d5f01c2ad57aa4a831e57678fa3be7e437d2cdc05d2cac0f1c3",
+      "events": [
+        {
+          "@timestamp": "2026-10-11T09:21:00.000Z",
+          "event.code": "1",
+          "event.action": "Process Create",
+          "host.name": "ws1.lab.local",
+          "process.name": "update-helper.exe",
+          "process.executable": "C:\\Users\\j.nowak\\AppData\\Local\\Temp\\update-helper.exe",
+          "process.hash.sha256": "82ff65dd16ae8d5f01c2ad57aa4a831e57678fa3be7e437d2cdc05d2cac0f1c3",
+          "process.parent.name": "explorer.exe"
+        },
+        {
+          "@timestamp": "2026-10-11T09:21:02.000Z",
+          "event.code": "13",
+          "event.action": "Registry value set",
+          "host.name": "ws1.lab.local",
+          "process.name": "update-helper.exe",
+          "registry.path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\UpdateHelper"
+        },
+        {
+          "@timestamp": "2026-10-11T09:21:05.000Z",
+          "event.code": "3",
+          "event.action": "Network connection",
+          "host.name": "ws1.lab.local",
+          "process.name": "update-helper.exe",
+          "destination.ip": "10.66.0.10",
+          "destination.port": 8080
+        }
+      ],
+      "ground_truth": {
+        "@timestamp": "2026-10-11T09:21:00.000Z",
+        "host": "ws1.lab.local",
+        "techniques": [
+          "T1204.002",
+          "T1547.001",
+          "T1071.001",
+          "T1027"
+        ],
+        "variant_sha256": "82ff65dd16ae8d5f01c2ad57aa4a831e57678fa3be7e437d2cdc05d2cac0f1c3"
+      },
+      "findings": [
+        {
+          "rule": "run-key-from-temp",
+          "delay_s": 59
+        },
+        {
+          "rule": "same-name-new-hash",
+          "delay_s": 121,
+          "only": "same-name"
+        },
+        {
+          "rule": "lab-beaconing",
+          "delay_s": 318
+        }
+      ],
+      "renamed": "msedge_update.exe"
+    },
+    {
+      "n": 4,
+      "host": "ws2.lab.local",
+      "sha256": "8a195a1e4d2f018615b03fb9ecf6dadda1748688bbdcbda1a48751167e0e95ee",
+      "events": [
+        {
+          "@timestamp": "2026-10-11T09:33:00.000Z",
+          "event.code": "1",
+          "event.action": "Process Create",
+          "host.name": "ws2.lab.local",
+          "process.name": "update-helper.exe",
+          "process.executable": "C:\\Users\\j.nowak\\AppData\\Local\\Temp\\update-helper.exe",
+          "process.hash.sha256": "8a195a1e4d2f018615b03fb9ecf6dadda1748688bbdcbda1a48751167e0e95ee",
+          "process.parent.name": "explorer.exe"
+        },
+        {
+          "@timestamp": "2026-10-11T09:33:02.000Z",
+          "event.code": "13",
+          "event.action": "Registry value set",
+          "host.name": "ws2.lab.local",
+          "process.name": "update-helper.exe",
+          "registry.path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\UpdateHelper"
+        },
+        {
+          "@timestamp": "2026-10-11T09:33:05.000Z",
+          "event.code": "3",
+          "event.action": "Network connection",
+          "host.name": "ws2.lab.local",
+          "process.name": "update-helper.exe",
+          "destination.ip": "10.66.0.10",
+          "destination.port": 8080
+        }
+      ],
+      "ground_truth": {
+        "@timestamp": "2026-10-11T09:33:00.000Z",
+        "host": "ws2.lab.local",
+        "techniques": [
+          "T1204.002",
+          "T1547.001",
+          "T1071.001",
+          "T1027"
+        ],
+        "variant_sha256": "8a195a1e4d2f018615b03fb9ecf6dadda1748688bbdcbda1a48751167e0e95ee"
+      },
+      "findings": [
+        {
+          "rule": "run-key-from-temp",
+          "delay_s": 66
+        },
+        {
+          "rule": "same-name-new-hash",
+          "delay_s": 117,
+          "only": "same-name"
+        },
+        {
+          "rule": "lab-beaconing",
+          "delay_s": 309
+        }
+      ],
+      "renamed": "svchost32.exe"
+    }
+  ],
+  "beacon": "10.66.0.10:8080"
+}

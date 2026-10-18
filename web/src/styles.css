@@ -1,0 +1,1661 @@
+/* hubertjablon.ski — one stylesheet, system fonts, no external requests.
+ *
+ * Colour is defined once as tokens. Dark is the default look of the site; light is a full palette
+ * of its own (not an inversion), applied by the OS preference or by the toggle (data-theme).
+ * The three stage colours -- attack, detect, respond -- are the visual spine of the page and mean
+ * the same thing everywhere they appear. Text never wears them alone: every coloured mark has a
+ * label next to it.
+ */
+
+
+:root {
+  color-scheme: dark;
+  --bg: #0c0e12;
+  --bg-grid: rgba(255 255 255 / 0.035);
+  --surface: #13161c;
+  --surface-2: #1a1e26;
+  --border: #272c36;
+  --border-strong: #3a414e;
+  --text: #ebe9e4;
+  --text-muted: #a9adb6;
+  --text-faint: #8a8f99;
+  --accent: #5ee0a4;
+  --accent-ink: #062016;
+  --attack: #ff7657;
+  --detect: #f4bf4f;
+  --respond: #5ee0a4;
+  --role-entry: #6cb6ff;
+  --role-record: #b392f0;
+  --role-tint: 13%;
+  --good: #3fcf6b;
+  --warning: #f4bf4f;
+  --serious: #ef8a5f;
+  --critical: #ff6363;
+  --neutral: #8a8f99;
+  --good-bg: rgba(63 207 107 / 0.12);
+  --warning-bg: rgba(244 191 79 / 0.13);
+  --critical-bg: rgba(255 99 99 / 0.13);
+  --neutral-bg: rgba(138 143 153 / 0.14);
+  --todo: #c792ea;
+  --shadow: 0 1px 0 rgba(255 255 255 / 0.03) inset, 0 12px 32px -16px rgba(0 0 0 / 0.6);
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --gutter: clamp(1rem, 4vw, 2rem);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #f5f4ef;
+    --bg-grid: rgba(20 24 32 / 0.045);
+    --surface: #ffffff;
+    --surface-2: #f0efe9;
+    --border: #dddbd2;
+    --border-strong: #c3c0b5;
+    --text: #15181e;
+    --text-muted: #4e535c;
+    --text-faint: #646973;
+    --accent: #047a52;
+    --accent-ink: #ffffff;
+    --attack: #c2410c;
+    --detect: #9a6700;
+    --respond: #047a52;
+    --role-entry: #0969da;
+    --role-record: #8250df;
+    --role-tint: 9%;
+    --good: #12823b;
+    --warning: #9a6700;
+    --serious: #b9531f;
+    --critical: #c62828;
+    --neutral: #6b707a;
+    --good-bg: rgba(18 130 59 / 0.1);
+    --warning-bg: rgba(191 135 0 / 0.13);
+    --critical-bg: rgba(198 40 40 / 0.09);
+    --neutral-bg: rgba(107 112 122 / 0.11);
+    --todo: #8a3fb8;
+    --shadow: 0 1px 2px rgba(20 24 32 / 0.06), 0 10px 28px -18px rgba(20 24 32 / 0.25);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f4ef;
+  --bg-grid: rgba(20 24 32 / 0.045);
+  --surface: #ffffff;
+  --surface-2: #f0efe9;
+  --border: #dddbd2;
+  --border-strong: #c3c0b5;
+  --text: #15181e;
+  --text-muted: #4e535c;
+  --text-faint: #646973;
+  --accent: #047a52;
+  --accent-ink: #ffffff;
+  --attack: #c2410c;
+  --detect: #9a6700;
+  --respond: #047a52;
+  --role-entry: #0969da;
+  --role-record: #8250df;
+  --role-tint: 9%;
+  --good: #12823b;
+  --warning: #9a6700;
+  --serious: #b9531f;
+  --critical: #c62828;
+  --neutral: #6b707a;
+  --good-bg: rgba(18 130 59 / 0.1);
+  --warning-bg: rgba(191 135 0 / 0.13);
+  --critical-bg: rgba(198 40 40 / 0.09);
+  --neutral-bg: rgba(107 112 122 / 0.11);
+  --todo: #8a3fb8;
+  --shadow: 0 1px 2px rgba(20 24 32 / 0.06), 0 10px 28px -18px rgba(20 24 32 / 0.25);
+}
+
+/* ---------- base ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* An anchor lands below the sticky header, which is two rows on a phone (the jump bar). */
+html {
+  scroll-padding-top: 4.5rem;
+}
+
+@media (max-width: 760px) {
+  html {
+    scroll-padding-top: 6.5rem;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 1rem/1.6 var(--font-sans);
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+p {
+  margin: 0 0 0.75rem;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  overflow-wrap: anywhere;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+main:focus {
+  outline: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 74rem;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.small {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.eyebrow {
+  font: 600 0.75rem/1.4 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 0.75rem;
+}
+
+/* The sections are numbered by the stylesheet, not in the copy, so a section the production build
+   drops (an About still to be written) leaves no gap in the numbering. The same numbers in both
+   views, About last: Skills and Projects (data-group="about") are About's sub-sections, unnumbered. */
+main {
+  counter-reset: section;
+}
+
+.section:not([data-group]) > .wrap > .section__head > .eyebrow::before {
+  counter-increment: section;
+  content: counter(section, decimal-leading-zero) " · ";
+}
+
+/* Placeholder copy the owner still has to write. Loud on purpose, so it cannot ship unnoticed. */
+.todo-content {
+  color: var(--todo);
+  outline: 1px dashed var(--todo);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+/* ---------- header ---------- */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.5rem;
+}
+
+/* On the narrowest phones, with a wide font, the name gives way (an ellipsis) before the header's
+   buttons are pushed off the screen. */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.55rem;
+  color: var(--text);
+  text-decoration: none;
+  font: 600 0.95rem/1 var(--font-mono);
+  white-space: nowrap;
+}
+
+/* The prompt: the shell's ">_", in the brand's green, as big as the name (2026-10-13). */
+.brand__mark {
+  flex: none;
+  color: var(--respond);
+  font: 700 1em/1 var(--font-mono);
+  letter-spacing: -0.05em;
+}
+
+.brand__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brand__dot {
+  color: var(--accent);
+}
+
+.site-nav {
+  margin-left: auto;
+}
+
+.site-nav ul {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav a {
+  display: block;
+  padding: 0.4rem 0.6rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+}
+
+.site-nav a:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.site-header__tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* On a phone the section links become a compact jump bar: a second row of the sticky header that
+   scrolls sideways inside itself, never the page. */
+@media (max-width: 760px) {
+  .site-header__inner {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .site-nav {
+    order: 3;
+    flex: 1 0 100%;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 0 var(--gutter) 0.3rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site-nav ul {
+    gap: 0.15rem;
+    white-space: nowrap;
+  }
+
+  .site-nav a {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.82rem;
+    color: var(--text);
+    background: var(--surface-2);
+  }
+
+  .site-header__tools {
+    margin-left: auto;
+  }
+}
+
+/* Five section links fit a 320-380 px screen in one row: "How it works" says "How". */
+@media (max-width: 380px) {
+  .site-nav__more {
+    display: none;
+  }
+
+  .site-nav a {
+    padding-inline: 0.45rem;
+  }
+}
+
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--border-strong);
+}
+
+/* A half-filled disc: reads as "light/dark" without an icon font or an SVG request. */
+.theme-toggle__icon {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: 600 0.95rem/1.2 var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn--primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.btn--ghost:hover {
+  background: var(--surface-2);
+}
+
+.btn--small {
+  min-height: 2rem;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.btn--attack {
+  width: 100%;
+  margin-top: auto;
+  background: color-mix(in srgb, var(--attack) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--attack) 55%, transparent);
+  color: var(--text);
+}
+
+.btn--attack:hover {
+  background: color-mix(in srgb, var(--attack) 24%, var(--surface));
+}
+
+.btn--attack .btn__icon {
+  color: var(--attack);
+  font-size: 0.75rem;
+}
+
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.btn[aria-disabled="true"] .btn__icon {
+  color: var(--text-faint);
+}
+
+.btn[data-running="true"] {
+  border-color: var(--attack);
+  color: var(--text);
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  /* The evidence card has to stay above a 720 px fold whatever fonts the visitor has (ADR 0035):
+     the top padding is kept modest, the name below is sized to its column. */
+  padding-block: clamp(1.25rem, 3vw, 2rem) clamp(1rem, 2.5vw, 1.5rem);
+  background-image:
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Two columns from 1024 px: the copy (with the counters) and the evidence card. Below that the card
+   follows the counters (ADR 0035). Aligned to the top: a tall copy must not push the card below the
+   fold, nor a tall card the copy. */
+.hero__grid {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .hero__grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+}
+
+/* The name is sized by its column (container query units), not the viewport, so it stays on one
+   line with a wider system font as well: 10cqi leaves room for ~10 em of text. */
+.hero__copy {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 8vw, 4.5rem);
+  font-size: clamp(2rem, 10cqi, 4.5rem);
+  line-height: 1.05;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  margin-bottom: 0.75rem;
+}
+
+.hero__lead {
+  font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+  color: var(--text-muted);
+  max-width: 38rem;
+}
+
+.hero__lead strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hero__lead--sub {
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+}
+
+.loop {
+  margin: 0;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.loop__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.loop__step {
+  --c: var(--attack);
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  column-gap: 0.75rem;
+  padding: 0.85rem 0.75rem;
+  border-left: 3px solid var(--c);
+  background: color-mix(in srgb, var(--c) 7%, transparent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.loop__step--detect {
+  --c: var(--detect);
+}
+
+.loop__step--respond {
+  --c: var(--respond);
+}
+
+.loop__k {
+  grid-row: span 2;
+  font: 600 0.8rem/1.6 var(--font-mono);
+  color: var(--c);
+}
+
+.loop__t {
+  font-weight: 650;
+}
+
+.loop__d {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.loop figcaption {
+  margin-top: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
+/* ---------- sections ---------- */
+
+.section {
+  padding-block: clamp(3rem, 8vw, 5.5rem);
+  border-bottom: 1px solid var(--border);
+}
+
+.section--attack {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--attack) 4%, transparent), transparent 40%);
+}
+
+.section__head {
+  max-width: 46rem;
+  margin-bottom: 2rem;
+}
+
+.section__head h2 {
+  font-size: clamp(1.75rem, 4.5vw, 2.5rem);
+  font-weight: 720;
+  margin-bottom: 0.75rem;
+}
+
+.section__lead {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.section__more {
+  margin-top: 1.5rem;
+  color: var(--text-muted);
+}
+
+/* Each section below the hero folds under its heading (ui/sections.ts): the h2's text is a button,
+   the chevron points down while open and right while folded. A folded section keeps its eyebrow (and
+   with it its number) and its title, and nothing else. The title wraps like any heading: nothing in
+   the button may widen a 320 px page. */
+.section__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.section__label {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.section__chevron {
+  flex: none;
+  width: 0.38em;
+  height: 0.38em;
+  margin-inline: 0.1em;
+  border-right: 0.1em solid currentColor;
+  border-bottom: 0.1em solid currentColor;
+  color: var(--text-faint);
+  transform: translateY(-0.12em) rotate(45deg);
+}
+
+.section__toggle[aria-expanded="false"] .section__chevron {
+  transform: rotate(-45deg);
+}
+
+.section__toggle:hover .section__chevron {
+  color: var(--accent);
+}
+
+.section__toggle:focus-visible {
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.reduced-motion) .section__chevron {
+    transition: transform 0.18s ease;
+  }
+}
+
+.section--collapsed {
+  padding-block: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+.section--collapsed .section__head {
+  margin-bottom: 0;
+}
+
+.section--collapsed .section__head h2 {
+  margin-bottom: 0;
+}
+
+.section--collapsed .section__head > :not(.eyebrow, h2) {
+  display: none;
+}
+
+/* Before ui/sections.ts mounts, theme.ts names the sections a visitor folded in html[data-folded]
+   (from localStorage, before first paint): they look folded already, so nothing jumps when the buttons
+   arrive. sections.ts drops the attribute once it has folded them itself. One line per foldable section;
+   a unit test checks the list against index.html. */
+:is(
+html[data-folded~="attack"] #attack,
+html[data-folded~="correlation"] #correlation,
+html[data-folded~="how"] #how,
+html[data-folded~="about"] #about,
+html[data-folded~="evidence"] #evidence,
+html[data-folded~="posture"] #posture,
+html[data-folded~="verify"] #verify,
+html[data-folded~="skills"] #skills,
+html[data-folded~="projects"] #projects
+) {
+  padding-block: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+:is(
+html[data-folded~="attack"] #attack,
+html[data-folded~="correlation"] #correlation,
+html[data-folded~="how"] #how,
+html[data-folded~="about"] #about,
+html[data-folded~="evidence"] #evidence,
+html[data-folded~="posture"] #posture,
+html[data-folded~="verify"] #verify,
+html[data-folded~="skills"] #skills,
+html[data-folded~="projects"] #projects
+) :is(.section__head, .section__head h2) {
+  margin-bottom: 0;
+}
+
+:is(
+html[data-folded~="attack"] #attack,
+html[data-folded~="correlation"] #correlation,
+html[data-folded~="how"] #how,
+html[data-folded~="about"] #about,
+html[data-folded~="evidence"] #evidence,
+html[data-folded~="posture"] #posture,
+html[data-folded~="verify"] #verify,
+html[data-folded~="skills"] #skills,
+html[data-folded~="projects"] #projects
+) :is(.section__head > :not(.eyebrow, h2), .section__body) {
+  display: none;
+}
+
+.panel-title {
+  font: 600 0.8rem/1.4 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.9rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  box-shadow: var(--shadow);
+}
+
+.panel--flush {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.panel-foot {
+  margin: 1.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
+.loading,
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.empty {
+  padding: 1.25rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+/* ---------- offline state ---------- */
+
+.offline {
+  padding: 1.25rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.offline__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.offline__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--neutral-bg);
+  color: var(--text-muted);
+}
+
+.offline__body {
+  color: var(--text-muted);
+  max-width: 44rem;
+}
+
+.offline__detail {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+/* ---------- chips ---------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font: 600 0.78rem/1.5 var(--font-mono);
+  color: var(--text);
+  background: var(--neutral-bg);
+  border: 1px solid color-mix(in srgb, var(--neutral) 40%, transparent);
+  white-space: nowrap;
+}
+
+.chip--good {
+  background: var(--good-bg);
+  border-color: color-mix(in srgb, var(--good) 45%, transparent);
+}
+
+.chip--good > span:first-child {
+  color: var(--good);
+}
+
+.chip--warning {
+  background: var(--warning-bg);
+  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
+}
+
+.chip--warning > span:first-child {
+  color: var(--warning);
+}
+
+.chip--critical {
+  background: var(--critical-bg);
+  border-color: color-mix(in srgb, var(--critical) 50%, transparent);
+}
+
+.chip--critical > span:first-child {
+  color: var(--critical);
+}
+
+/* ---------- about, projects ---------- */
+
+.prose p {
+  max-width: 40rem;
+  color: var(--text-muted);
+}
+
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.skills li {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font: 500 0.82rem/1.4 var(--font-mono);
+  background: var(--surface);
+}
+
+.about__sub {
+  margin: 1.75rem 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.projects {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project {
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.project h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+}
+
+.project p {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.project__tags {
+  margin: 0;
+  font: 500 0.78rem/1.5 var(--font-mono);
+  color: var(--text-faint) !important;
+}
+
+/* ---------- footer ---------- */
+
+.site-footer {
+  padding-block: 2.5rem 3rem;
+}
+
+.site-footer__inner p {
+  margin-bottom: 0.4rem;
+}
+
+/* ---------- motion and forced colours ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .hop[data-state="lit"] .hop__node,
+  .stage[data-reached="true"],
+  .tile,
+  .chip,
+  .btn {
+    border: 1px solid CanvasText;
+  }
+
+  .stack__seg,
+  .legend__swatch,
+  .hop__wire::after,
+  .stage[data-reached="true"] .stage__dot,
+  .conn__dot {
+    forced-color-adjust: none;
+  }
+}
+
+/* ---------- detection lab preview (#lab, ui/lab.ts) ---------- */
+
+.lab,
+.lab-outcome {
+  display: grid;
+  gap: 1rem;
+}
+
+.lab-note,
+.lab-title,
+.lab-summary,
+.lab-takeaway {
+  margin: 0;
+}
+
+.lab-note {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.lab-title {
+  font-size: 1.1rem;
+}
+
+.lab-summary {
+  max-width: 48rem;
+}
+
+.lab-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+}
+
+.lab-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lab-picker__btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.lab-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2rem;
+  cursor: pointer;
+}
+
+.lab-rename__box {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--accent);
+}
+
+.lab-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+
+.lab-kv {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.lab-kv__row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font: 0.82rem/1.4 var(--font-mono);
+}
+
+.lab-kv__row dt {
+  color: var(--text-faint);
+}
+
+.lab-kv__row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lab-kv__row[data-changed="true"] {
+  background: color-mix(in srgb, var(--attack) 12%, transparent);
+}
+
+.lab-kv__row[data-changed="true"] dd {
+  color: var(--attack);
+}
+
+.lab-rule-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.lab-rule {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.lab-rule[data-fired="true"] {
+  border-left-color: var(--detect);
+}
+
+.lab-rule__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+}
+
+.lab-rule__title {
+  font-weight: 650;
+}
+
+.lab-rule__logic {
+  margin: 0.2rem 0 0.35rem;
+}
+
+.lab-hit {
+  font-size: 0.9rem;
+  margin-right: 0.2rem;
+  color: var(--text-faint);
+}
+
+.lab-hit[data-hit="true"] {
+  color: var(--detect);
+}
+
+.lab-meters {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.lab-risk p {
+  margin: 0;
+}
+
+.lab-risk__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-weight: 600;
+}
+
+.lab-risk__label strong {
+  white-space: nowrap;
+}
+
+.lab-risk__label code {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.lab-meter {
+  position: relative;
+  height: 0.6rem;
+  margin: 0.4rem 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.lab-meter__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--detect);
+  transition: width 0.3s;
+}
+
+.lab-meter[data-over="true"] .lab-meter__fill {
+  background: var(--critical);
+}
+
+.lab-meter__mark {
+  position: absolute;
+  top: -0.25rem;
+  bottom: -0.25rem;
+  width: 2px;
+  background: var(--text);
+}
+
+.lab-incident {
+  min-height: 4.5rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.lab-incident[data-open="true"] {
+  border: 1px solid color-mix(in srgb, var(--critical) 55%, transparent);
+  background: var(--critical-bg);
+}
+
+.lab-incident p {
+  margin: 0;
+}
+
+.lab-incident__title {
+  font-weight: 650;
+  margin-bottom: 0.25rem !important;
+}
+
+.lab-takeaway {
+  min-height: 3.2rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.lab-takeaway strong {
+  color: var(--text);
+}
+
+.lab-table-wrap {
+  overflow-x: auto;
+}
+
+.lab-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.lab-table th,
+.lab-table td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.lab-table th {
+  font: 600 0.72rem/1.4 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.lab-table tr[data-gap="true"] td:nth-child(3) {
+  color: var(--warning);
+  font-weight: 650;
+}
+
+@media (max-width: 760px) {
+  .lab-grid,
+  .lab-meters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A phone keeps the numbers; the rule's name is on its card above. */
+@media (max-width: 520px) {
+  .lab-table th:nth-child(2),
+  .lab-table td:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-meter__fill {
+    transition: none;
+  }
+}
+
+/* ---------- landing page (/) and /lab/ ---------- */
+
+.landing-hero {
+  padding-block: clamp(2.5rem, 7vw, 4.5rem) clamp(2rem, 5vw, 3rem);
+}
+
+.landing-hero h1 {
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  max-width: 22ch;
+}
+
+.cards {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card--live {
+  border-top-color: var(--good);
+}
+
+.card--preview {
+  border-top-color: var(--warning);
+}
+
+.card p {
+  margin: 0;
+}
+
+.card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font: 600 0.75rem/1.4 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.card__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.card--live .card__dot {
+  background: var(--good);
+  box-shadow: 0 0 0 3px var(--good-bg);
+}
+
+.card__title {
+  font-size: clamp(1.35rem, 3vw, 1.6rem);
+}
+
+.card__title a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.card__title a:hover {
+  text-decoration: underline;
+}
+
+.card__lead {
+  color: var(--text-muted);
+}
+
+.card__tags {
+  font: 500 0.78rem/1.5 var(--font-mono);
+  color: var(--text-faint);
+}
+
+.card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: auto !important;
+  padding-top: 0.5rem;
+}
+
+.lab-steps {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.lab-steps li {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.lab-steps h3 {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.lab-steps h3::before {
+  counter-increment: step;
+  content: counter(step) ". ";
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+.lab-steps p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.landing .section__head {
+  margin-bottom: 1.75rem;
+}
+
+.landing .section__head h2 {
+  margin-bottom: 0.75rem;
+}
+
+/* ---------- the way in (landing page, #entry) ---------- */
+
+.entry-figure {
+  margin: 0;
+}
+
+.entry-map {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.entry-map--narrow {
+  max-width: 24rem;
+  margin-inline: auto;
+}
+
+.entry-map--wide {
+  display: none;
+}
+
+@media (min-width: 761px) {
+  .entry-map--wide {
+    display: block;
+  }
+
+  .entry-map--narrow {
+    display: none;
+  }
+}
+
+.em-zone rect {
+  fill: color-mix(in srgb, var(--surface) 55%, transparent);
+  stroke: var(--border);
+  stroke-dasharray: 4 4;
+}
+
+.em-zone-title {
+  font: 600 11px var(--font-mono);
+  letter-spacing: 0.1em;
+  fill: var(--text-muted);
+}
+
+.em-zone-sub {
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  fill: var(--text-faint);
+}
+
+.em-node rect {
+  fill: var(--surface);
+  stroke-width: 1.5;
+}
+
+.em-path rect {
+  stroke: var(--role-entry);
+  fill: color-mix(in srgb, var(--role-entry) var(--role-tint), var(--surface));
+}
+
+.em-site rect {
+  stroke: var(--accent);
+  fill: color-mix(in srgb, var(--accent) var(--role-tint), var(--surface));
+}
+
+.em-project rect {
+  stroke: var(--attack);
+  fill: color-mix(in srgb, var(--attack) var(--role-tint), var(--surface));
+}
+
+.em-label {
+  font: 650 14px var(--font-sans);
+  fill: var(--text);
+  text-anchor: middle;
+}
+
+.em-sub {
+  font: 400 10.5px var(--font-mono);
+  fill: var(--text-muted);
+  text-anchor: middle;
+}
+
+.em-edge {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.em-arrowhead {
+  fill: var(--text-faint);
+}
+
+.em-edge-label {
+  font: 500 10.5px var(--font-mono);
+  fill: var(--text-muted);
+}
+
+.em-edge--tunnel {
+  stroke-dasharray: 5 4;
+}
+
+/* A box that opens a page carries an arrow; the page the visitor is on, a dot instead. */
+.em-go {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.em-here {
+  fill: var(--accent);
+}
+
+.em-link {
+  cursor: pointer;
+}
+
+.em-link:hover rect,
+.em-link:focus-visible rect {
+  stroke-width: 2.5;
+}
+
+.em-link:hover .em-go,
+.em-link:focus-visible .em-go {
+  stroke: var(--text);
+}
+
+/* The traffic: every 4 s a dot runs from the visitor to one of the pages, each in turn. Its route and
+   timing are generated (entry-traffic.css, offset-path, so it moves by transform). Not drawn at all
+   where motion is not wanted. */
+.em-dot {
+  display: none;
+  offset-rotate: 0deg;
+  opacity: 0;
+}
+
+.em-dot--site {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 3px var(--accent));
+}
+
+.em-dot--project {
+  fill: var(--attack);
+  filter: drop-shadow(0 0 3px var(--attack));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .em-dot {
+    display: inline;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+}
+
+.em-link:focus-visible {
+  outline: none;
+}
+
+.em-link:focus-visible rect {
+  stroke: var(--text);
+}
+
+.entry-figure figcaption {
+  margin-top: 0.75rem;
+}
+
+/* Moving between the landing page, /lab/ and /cluster/ (one origin, so the browser may): the
+   page cross-fades and the header stays where it is instead of flashing a reload. A browser
+   without cross-document view transitions simply navigates. */
+@view-transition {
+  navigation: auto;
+}
+.site-header {
+  view-transition-name: site-header;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+
+/* Between the landing page and a project the screen slides like an iPhone app: the page opened
+   comes in from the right, and going back (home, or the back button) slides the other way. The
+   header stays put above the slide. theme.ts names the direction; a browser without view-transition
+   types keeps the cross-fade above. */
+html:active-view-transition-type(forward, backward)::view-transition-old(root),
+html:active-view-transition-type(forward, backward)::view-transition-new(root) {
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+html:active-view-transition-type(forward)::view-transition-old(root) {
+  animation-name: vt-slide-to-left;
+}
+html:active-view-transition-type(forward)::view-transition-new(root) {
+  animation-name: vt-slide-from-right;
+}
+html:active-view-transition-type(backward)::view-transition-old(root) {
+  animation-name: vt-slide-to-right;
+}
+html:active-view-transition-type(backward)::view-transition-new(root) {
+  animation-name: vt-slide-from-left;
+}
+@keyframes vt-slide-to-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes vt-slide-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-slide-to-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-slide-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+/* The same slide where the browser cannot animate between documents (Firefox): theme.ts adds these
+   classes on <html>, plays the page out before following the link and in on the next page. The
+   header stays put; the rest of the page moves. */
+html.slide-in-forward,
+html.slide-in-backward,
+html.slide-out-forward,
+html.slide-out-backward {
+  overflow-x: clip;
+}
+html.slide-in-forward body > :not(.site-header) {
+  animation: vt-slide-from-right 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.slide-in-backward body > :not(.site-header) {
+  animation: vt-slide-from-left 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.slide-out-forward body > :not(.site-header) {
+  animation: vt-slide-to-left 220ms cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+html.slide-out-backward body > :not(.site-header) {
+  animation: vt-slide-to-right 220ms cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}

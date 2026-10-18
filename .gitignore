@@ -17,3 +17,12 @@ ground_truth_*.json
 __pycache__/
 *.pyc
 /out/
+
+# web app (web/): dependencies, build output and test artefacts
+web/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+
+# OMC operational state (never committed)
+.omc/
