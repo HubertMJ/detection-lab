@@ -9,8 +9,9 @@ SHA-256) so a hash IOC rule can be pinned to it; copies 2..N each get a fresh
 random 16-byte marker, hence a new hash and a new randomised name.
 
 Outputs (into --out):
-  events.ndjson  one event per line, in the sdp-lab field contract, ready to
-                 bulk-index into OpenSearch (the real-ish synthetic values).
+  events.ndjson  one event per line, in the sdp-lab field contract as nested
+                 objects (Security Analytics rules match nested documents, not
+                 flat dotted keys), ready to bulk-index into OpenSearch.
   run.json       the ground-truth / run document in the LabReplay shape the
                  site consumes, with lab labels only (no real host/user/address)
                  and findings left empty for the validator to fill.
@@ -219,6 +220,24 @@ def generate(count, hosts, beacon_ip, beacon_port, start, run_id, mode):
     return all_events, run_doc
 
 
+def nest(event):
+    """Flat dotted keys -> nested objects (Security Analytics only matches nested docs).
+
+    "@timestamp" stays a top-level key.
+    """
+    out = {}
+    for key, value in event.items():
+        if key == "@timestamp":
+            out[key] = value
+            continue
+        node = out
+        parts = key.split(".")
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = value
+    return out
+
+
 def parse_args(argv):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--copies", type=int, default=4)
@@ -257,7 +276,7 @@ def main(argv):
     nd_path = os.path.join(args.out, "events.ndjson")
     with open(nd_path, "w", encoding="utf-8") as fh:
         for e in events:
-            fh.write(json.dumps(e, separators=(",", ":"), sort_keys=True))
+            fh.write(json.dumps(nest(e), separators=(",", ":"), sort_keys=True))
             fh.write("\n")
     run_path = os.path.join(args.out, "run.json")
     run_bytes = json.dumps(run_doc, indent=2).encode("utf-8")

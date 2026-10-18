@@ -47,7 +47,9 @@ a real test binary belongs to variant B (an isolated VM), which is out of scope 
   hash) so a hash IOC rule can pin to it; copies 2..N get a fresh random 16-byte marker. For each
   copy it emits a process-create (`event.code` 1), a Run-key write from a Temp path (`13`) and a
   steady beacon (`3`, enough connections for the 5+/10-min logic). Outputs:
-  - `events.ndjson` — one event per line in the `sdp-lab` field contract, ready to bulk-index;
+  - `events.ndjson` — one event per line in the `sdp-lab` field contract, as nested objects
+    (`{"event": {"code": ...}, "process": {...}}`, `@timestamp` top-level): Security Analytics
+    rules match nested documents, not flat dotted keys. Ready to bulk-index;
   - `run.json` — the ground-truth / run document in the site's `LabReplay` shape (`schema: 1`,
     `sample: false`), with lab labels only (`ws1`/`ws2`, `lab beacon :<port>`) and findings left
     empty for the validator to fill. Under 64 KiB.

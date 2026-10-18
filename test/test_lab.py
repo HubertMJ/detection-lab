@@ -61,6 +61,28 @@ class GeneratorTest(unittest.TestCase):
                 if key in e:
                     self.assertNotIn(" ", str(e[key]), f"{key} has a space")
 
+    def test_ndjson_is_nested(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as out:
+            g.main(["--out", out, "--start", "2026-10-18T09:00:00Z"])
+            with open(os.path.join(out, "events.ndjson"), encoding="utf-8") as fh:
+                docs = [json.loads(line) for line in fh]
+        self.assertTrue(docs)
+        for d in docs:
+            self.assertIn("@timestamp", d)
+            for key in d:
+                self.assertTrue(key == "@timestamp" or "." not in key, f"flat key {key}")
+            self.assertIn(d["event"]["code"], {"1", "3", "13"})
+            self.assertEqual(d["event"]["dataset"], "lab")
+        first = docs[0]
+        self.assertEqual(first["process"]["hash"]["sha256"], g.copy1_sha256())
+        self.assertEqual(first["process"]["parent"]["name"], "explorer.exe")
+        reg = next(d for d in docs if d["event"]["code"] == "13")
+        self.assertIn("\\CurrentVersion\\Run\\", reg["registry"]["path"])
+        self.assertIn("\\AppData\\Local\\Temp\\", reg["process"]["executable"])
+        net = next(d for d in docs if d["event"]["code"] == "3")
+        self.assertEqual(net["destination"], {"ip": "198.51.100.10", "port": 8080})
+
     def test_beacon_logic_is_satisfiable(self):
         events, _ = gen()
         code3 = [e for e in events if e["event.code"] == "3" and e["lab.variant"] == 1]
