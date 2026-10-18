@@ -12,3 +12,8 @@ docs/PLAN.md
 polymorphism/variants/
 *.bin
 ground_truth_*.json
+
+# python + generator output
+__pycache__/
+*.pyc
+/out/
