@@ -35,6 +35,23 @@ async function fetchLatest(): Promise<unknown | null> {
   }
 }
 
+// The static hero describes the bundled sample ("design preview", "not a run on real machines").
+// When the API hands us a real run, the hero must tell the truth too, so rewrite its eyebrow and
+// lead. Left untouched on the sample fallback (the standalone image, an absent or slow API), where
+// the static wording is correct.
+function heroLive(): void {
+  byId("lab-eyebrow").textContent = "Detection lab · live";
+  const lead = byId("lab-lead");
+  lead.textContent =
+    "A rule on a known hash catches one copy of a program. What catches the next three, when each has a new hash ";
+  const strong = document.createElement("strong");
+  strong.textContent = "and a new name";
+  lead.append(
+    strong,
+    "? Shows the latest daily run: generated events indexed into siem01, where real detection rules and a monitor catch them.",
+  );
+}
+
 function start(): void {
   const panel = byId("lab-panel");
   // Draw the bundled synthetic sample immediately: first paint never waits on the API.
@@ -43,7 +60,9 @@ function start(): void {
   // event (notably in Firefox). Then swap in the latest real run if the API answers with a valid one.
   const upgrade = (): void => {
     void fetchLatest().then((data) => {
-      if (isLabReplay(data)) mountLab(panel, data);
+      if (!isLabReplay(data)) return;
+      mountLab(panel, data);
+      if (!data.sample) heroLive();
     });
   };
   if (document.readyState === "complete") upgrade();
