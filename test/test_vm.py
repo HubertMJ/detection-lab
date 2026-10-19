@@ -72,6 +72,21 @@ class BuilderTest(unittest.TestCase):
         self.assertEqual(rs._persistence_path("update-helper"),
                          "/home/labuser/.config/systemd/user/update-helper.service")
 
+    def test_namemap_written_for_the_lua_mapper(self):
+        import tempfile
+        copies = rs.build_variants(SYNTH_BASE, 4)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "namemap")
+            rs.write_namemap(path, "lab-20261019T073610Z-abc123", copies)
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+        self.assertEqual(lines[0], "run_id lab-20261019T073610Z-abc123")
+        self.assertEqual(lines[1], f"{copies[0]['name']} 1")
+        self.assertEqual(len(lines), 5)  # run_id + 4 copies
+        # every data line is "<name> <variant>"
+        for ln in lines[1:]:
+            self.assertRegex(ln, r"^\S+ [1-4]$")
+
     @unittest.skipUnless(os.path.exists(REAL), "compiled canary not built")
     def test_real_binary_has_exactly_one_marker_and_stable_copy1(self):
         with open(REAL, "rb") as fh:
