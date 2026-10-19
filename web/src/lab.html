@@ -64,11 +64,11 @@
   <section class="section" id="generator" aria-labelledby="generator-title" data-group="landing">
     <div class="wrap">
       <header class="section__head">
-        <p class="eyebrow">Generator</p>
+        <p class="eyebrow" id="lab-gen-eyebrow">Generator</p>
         <h2 id="generator-title">How the incident generator works</h2>
-        <p class="section__lead">The same four steps for every scenario, so a rule is judged against what really happened, not against what it was meant to catch.</p>
+        <p class="section__lead" id="lab-gen-lead">The same four steps for every scenario, so a rule is judged against what really happened, not against what it was meant to catch.</p>
       </header>
-      <ol class="lab-steps" role="list">
+      <ol class="lab-steps" role="list" id="lab-steps">
         <li><h3>Scenario</h3><p>A YAML file: ATT&amp;CK techniques in order, and the detections each step is expected to raise.</p></li>
         <li><h3>Events</h3><p>The generator writes the Windows (Sysmon) events each step would leave, plus a ground-truth record: time, host, technique, hash.</p></li>
         <li><h3>SIEM</h3><p>Sigma rules match single events; OpenSearch Alerting monitors count across them and score risk per entity.</p></li>

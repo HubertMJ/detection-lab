@@ -19,6 +19,8 @@ export interface LabFinding {
   rule: string;
   /** Seconds from the variant's start to the finding: the time to detect. */
   delay_s: number;
+  /** Variant B: the finding's time as an offset from the run's t0, for the replay feed. */
+  at_offset_s?: number;
   /** "same-name": the finding exists only while every copy keeps the first copy's name. */
   only?: "same-name";
 }

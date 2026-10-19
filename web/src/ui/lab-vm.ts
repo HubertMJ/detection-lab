@@ -16,6 +16,12 @@ function mmss(s: number): string {
   return `${m}:${String(s % 60).padStart(2, "0")}`;
 }
 
+// A path breaks only after a "/", not mid-word: a zero-width space after each slash gives the line
+// wrapper a break opportunity there, so "...systemd/user/x.service" never splits as ".servic e".
+function path(p: string): string {
+  return p.replace(/\//g, "/​");
+}
+
 /** Above the panel: a real run with its id, date and duration, or a clearly-marked sample. */
 function note(d: LabReplay): HTMLElement {
   if (d.sample || !d.run) {
@@ -23,10 +29,10 @@ function note(d: LabReplay): HTMLElement {
       h("span", { class: "tag tag--arm" }, "Sample"),
       " An example of what a real VM run looks like — not a live run.");
   }
-  const dur = d.run.duration_s ? ` · ${mmss(d.run.duration_s)} on the VM` : "";
+  const dur = d.run.duration_s ? `${mmss(d.run.duration_s)} on the VM · ` : "";
   return h("p", { class: "lab-note" },
-    h("span", { class: "tag tag--detect" }, "Live · real machine"),
-    " a real run in an isolated lab" + dur + " · ",
+    h("span", { class: "tag tag--detect" }, "Live"),
+    " A real run on an isolated VM — " + dur,
     h("time", { datetime: d.run.finished_at }, RUN_DATE.format(new Date(d.run.finished_at))));
 }
 
@@ -75,19 +81,6 @@ function history(d: LabReplay): HTMLElement | null {
     h("span", { class: "lab-vm-hist__l" }, "Last runs:"), h("span", { class: "lab-vm-hist__dots" }, dots));
 }
 
-function counters(d: LabReplay): HTMLElement | null {
-  const c = d.counters;
-  if (!c) return null;
-  const tile = (n: number, label: string) =>
-    h("div", { class: "lab-vm-count" }, h("span", { class: "lab-vm-count__n" }, String(n)),
-      h("span", { class: "lab-vm-count__l" }, label));
-  return h("div", { class: "lab-vm-counts" },
-    tile(c.processes, "processes run"),
-    tile(c.unique_hashes, "unique hashes"),
-    tile(c.events, "events in the SIEM"),
-    tile(c.incidents, c.incidents === 1 ? "incident" : "incidents"));
-}
-
 /** The VM's run as a timeline: revert → boot → sensor up → scenario → shipped → power off. */
 function lifecycle(d: LabReplay): HTMLElement | null {
   if (!d.lifecycle || d.lifecycle.length === 0) return null;
@@ -120,6 +113,7 @@ function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
   const firedPersist = v.findings.some((f) => f.rule.includes("persistence"));
   const firedBeacon = v.findings.some((f) => f.rule.includes("beacon"));
   const incidentHere = d.incident?.opened_at_variant === v.n;
+  const detectS = v.findings.length ? Math.min(...v.findings.map((f) => f.delay_s)) : null;
   const kv = (k: string, val: string | number, mono = true) =>
     h("div", { class: "lab-vm-ev" }, h("span", { class: "lab-vm-ev__k" }, k),
       h("span", { class: mono ? "lab-vm-ev__v mono" : "lab-vm-ev__v" }, String(val)));
@@ -136,9 +130,10 @@ function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
       h("div", { class: "lab-vm-ev" }, h("span", { class: "lab-vm-ev__k" }, "sha-256"),
         h("span", { class: "lab-vm-ev__v mono" }, shaVal)),
       create ? kv("pid / ppid", `${v.pid ?? create["process.pid"]} / ${v.ppid ?? ""}`) : null,
-      create ? kv("exec", String(create["process.executable"])) : null,
-      file ? kv("persistence", String(file["file.path"])) : null,
-      kv("beacons", beacons ? `${beacons}× → lab beacon :8080` : "—")),
+      create ? kv("exec", path(String(create["process.executable"]))) : null,
+      file ? kv("persistence", path(String(file["file.path"]))) : null,
+      kv("beacons", beacons ? `${beacons}× → lab beacon :8080` : "—"),
+      kv("detected", detectS === null ? "—" : `${detectS}s after start`)),
     h("div", { class: "lab-vm-chips" },
       chip(v.caught_by_hash ? "hit" : "miss", v.caught_by_hash ? "✓ known-hash" : "known-hash"),
       firedPersist ? chip("hit", "✓ persistence from /tmp") : null,
@@ -164,15 +159,129 @@ function verdict(d: LabReplay): HTMLElement {
     tile("crit", inc === null ? "—" : `copy ${inc}`, inc === null ? "no incident" : "where the incident opened"));
 }
 
+// ---- the animated replay (the "it really runs" moment) ----
+
+interface FeedItem { offset: number; feed: "console" | "detect"; text: string; variant?: number; kind?: string; }
+
+/** Merge the run into one ordered list of things that happened, each at its real offset: the VM
+ * lifecycle and per-copy actions (the console), and the SIEM findings (the detection feed). */
+function feedItems(d: LabReplay): FeedItem[] {
+  const items: FeedItem[] = [];
+  for (const m of d.lifecycle ?? []) items.push({ offset: m.offset_s, feed: "console", text: m.label });
+  const ruleTitle = new Map(d.rules.map((r) => [r.id, r.title]));
+  for (const v of d.variants) {
+    for (const e of v.events) {
+      const off = Number(e["offset_s"] ?? 0);
+      const act = String(e["event.action"] ?? "");
+      if (act === "process-create") items.push({ offset: off, feed: "console", text: `copy ${v.n} ran — ${v.renamed}`, variant: v.n, kind: "exec" });
+      else if (act === "file-create") items.push({ offset: off, feed: "console", text: `copy ${v.n} wrote a persistence unit`, variant: v.n });
+      else if (act === "network-connection") items.push({ offset: off, feed: "console", text: `copy ${v.n} beaconed`, variant: v.n });
+    }
+    for (const f of v.findings) {
+      const at = f.at_offset_s;
+      if (at === undefined) continue;
+      const inc = d.incident?.opened_at_variant === v.n && f.rule.includes("beacon");
+      items.push({ offset: at, feed: "detect", variant: v.n, kind: inc ? "incident" : undefined,
+        text: `${ruleTitle.get(f.rule) ?? f.rule} · copy ${v.n} · +${f.delay_s}s${inc ? " → incident" : ""}` });
+    }
+  }
+  return items.sort((a, b) => a.offset - b.offset);
+}
+
+/** The replay player: a scrubber + controls, a VM console feed and a siem01 detection feed filling in
+ * at the real offsets, the four copy lanes lighting up, and the counters counting up. Autoplays once
+ * (never with reduced motion, where it shows the finished state). */
+function replay(d: LabReplay): HTMLElement | null {
+  const items = feedItems(d);
+  if (items.length === 0) return null;
+  const maxOff = Math.max(d.run?.duration_s ?? 0, ...items.map((i) => i.offset), 1);
+
+  const console_ = h("ol", { class: "lab-rp-feed", "aria-label": "VM console" });
+  const detect = h("ol", { class: "lab-rp-feed", "aria-label": "siem01 detections" });
+  const lanes = d.variants.map((v) =>
+    h("div", { class: "lab-rp-lane", "data-state": "pending" },
+      h("span", { class: "lab-rp-lane__n mono" }, `copy ${v.n}`),
+      h("span", { class: "lab-rp-lane__s" }, "waiting")));
+  const cProc = h("span", { class: "lab-rp-c__n mono" }, "0");
+  const cEv = h("span", { class: "lab-rp-c__n mono" }, "0");
+  const cDet = h("span", { class: "lab-rp-c__n mono" }, "0");
+  const cInc = h("span", { class: "lab-rp-c__n mono" }, "0");
+  const clock = h("span", { class: "lab-rp-clock mono" }, "0:00");
+  const scrub = h("input", { type: "range", class: "lab-rp-scrub", min: "0", max: String(maxOff), value: "0", step: "1",
+    "aria-label": "scrub the run" }) as HTMLInputElement;
+  const playBtn = h("button", { type: "button", class: "btn btn--ghost btn--small lab-rp-play" }, "▶ Play");
+  const speedSel = h("select", { class: "lab-rp-speed", "aria-label": "playback speed" },
+    h("option", { value: "1" }, "1×"), h("option", { value: "2", selected: true }, "2×"), h("option", { value: "4" }, "4×")) as HTMLSelectElement;
+
+  let revealed = -1;
+  function renderTo(off: number): void {
+    // reset when scrubbing backwards
+    if (off < (items[revealed]?.offset ?? 0)) { console_.replaceChildren(); detect.replaceChildren(); revealed = -1;
+      for (const l of lanes) { l.dataset.state = "pending"; (l.querySelector(".lab-rp-lane__s") as HTMLElement).textContent = "waiting"; } }
+    let proc = 0, ev = 0, det = 0, inc = 0;
+    while (revealed + 1 < items.length && items[revealed + 1].offset <= off) {
+      revealed++;
+      const it = items[revealed];
+      const line = h("li", { class: it.kind === "incident" ? "lab-rp-line lab-rp-line--crit" : "lab-rp-line" },
+        h("span", { class: "lab-rp-line__t mono" }, mmss(it.offset)), h("span", {}, it.text));
+      (it.feed === "console" ? console_ : detect).append(line);
+      if (it.feed === "console") { (it.feed === "console" ? console_ : detect).scrollTop = 1e9; }
+    }
+    // counts + lanes from everything up to `off`
+    for (let i = 0; i <= revealed; i++) {
+      const it = items[i];
+      if (it.kind === "exec") { proc++; const l = lanes[(it.variant ?? 1) - 1]; if (l) { l.dataset.state = "running"; (l.querySelector(".lab-rp-lane__s") as HTMLElement).textContent = "running"; } }
+      if (it.feed === "console" && (it.text.includes("ran") || it.text.includes("persistence") || it.text.includes("beaconed"))) ev++;
+      if (it.feed === "detect") { det++; if (it.kind === "incident") { inc++; const l = lanes[(it.variant ?? 1) - 1]; if (l) { l.dataset.state = "incident"; (l.querySelector(".lab-rp-lane__s") as HTMLElement).textContent = "in incident"; } } }
+    }
+    const uniq = d.counters?.unique_hashes ?? d.variants.length;
+    cProc.textContent = String(proc); cEv.textContent = String(Math.min(ev, d.counters?.events ?? ev));
+    cDet.textContent = String(det); cInc.textContent = String(inc);
+    cProc.dataset.u = String(uniq);
+    clock.textContent = mmss(Math.round(off));
+    scrub.value = String(Math.round(off));
+  }
+
+  let raf = 0; let t0 = 0; let base = 0; let playing = false;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ANIM_MS = 11000; // 1x: the whole run in ~11s
+  function stop(): void { if (raf) cancelAnimationFrame(raf); raf = 0; playing = false; playBtn.textContent = "▶ Play"; }
+  function frame(now: number): void {
+    const speed = Number(speedSel.value) || 1;
+    const elapsed = (now - t0) / ANIM_MS * maxOff * speed;
+    const off = Math.min(maxOff, base + elapsed);
+    renderTo(off);
+    if (off >= maxOff) { stop(); return; }
+    raf = requestAnimationFrame(frame);
+  }
+  function play(): void { if (playing) return; if ((Number(scrub.value) || 0) >= maxOff) { renderTo(0); } playing = true; playBtn.textContent = "⏸ Pause"; base = Number(scrub.value) || 0; t0 = performance.now(); raf = requestAnimationFrame(frame); }
+  playBtn.addEventListener("click", () => (playing ? stop() : play()));
+  scrub.addEventListener("input", () => { stop(); renderTo(Number(scrub.value) || 0); });
+
+  renderTo(reduce ? maxOff : 0);
+  if (!reduce) setTimeout(play, 400);
+
+  const count = (n: HTMLElement, label: string) => h("div", { class: "lab-rp-c" }, n, h("span", { class: "lab-rp-c__l" }, label));
+  return h("section", { class: "lab-rp" },
+    h("div", { class: "lab-rp-bar" }, playBtn, h("label", { class: "lab-rp-speedwrap small" }, "speed ", speedSel),
+      scrub, clock),
+    h("div", { class: "lab-rp-counts" }, count(cProc, "processes"), count(cEv, "events"), count(cDet, "detections"), count(cInc, "incidents")),
+    h("div", { class: "lab-rp-feeds" },
+      h("div", { class: "lab-rp-col" }, h("p", { class: "lab-rp-h" }, "VM console"), console_),
+      h("div", { class: "lab-rp-col" }, h("p", { class: "lab-rp-h" }, "siem01 — detections"), detect)),
+    h("div", { class: "lab-rp-lanes" }, lanes));
+}
+
 /** Draw a real (or sample) isolated-VM run into the lab panel. */
 export function mountLabVm(root: HTMLElement, d: LabReplay): void {
   root.replaceChildren(
     h("div", { class: "lab lab-vm" },
       note(d),
       statusStrip(),
-      counters(d),
       history(d),
-      h("h3", { class: "panel-title" }, "The machine's run, second by second"),
+      h("h3", { class: "panel-title" }, "Watch the run"),
+      replay(d),
+      h("h3", { class: "panel-title" }, "The run, second by second"),
       lifecycle(d),
       h("h3", { class: "panel-title" }, "Four copies, four hashes, one behaviour"),
       copies(d),

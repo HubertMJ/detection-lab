@@ -126,14 +126,35 @@ function heroVm(real: boolean): void {
   byId("lab-replay-eyebrow").textContent = real ? "Real run" : "Sample run";
   byId("lab-replay-lead").textContent =
     "The machine was reverted to a clean snapshot, ran four copies — each with a new hash and a new name — then powered off. This is what it really left behind.";
-  if (real) {
-    const next = byId("lab-next");
-    next.textContent = "These events come from a real isolated VM, shipped to the OpenSearch SIEM behind ";
-    const link = document.createElement("a");
-    link.href = "/cluster/#correlation";
-    link.textContent = "the self-defending cluster";
-    next.append(link, ", where real rules catch them.");
-  }
+  // The "How the generator works" section is about synthetic Windows events; a B run is a real Linux
+  // pipeline, so describe that instead.
+  byId("lab-gen-eyebrow").textContent = "Pipeline";
+  byId("generator-title").textContent = "How a real run works";
+  byId("lab-gen-lead").textContent =
+    "A real machine, reverted to a clean snapshot and run on a schedule, so the detections are judged against what actually happened on it.";
+  const step = (title: string, body: string): HTMLLIElement => {
+    const li = document.createElement("li");
+    const h3 = document.createElement("h3");
+    h3.textContent = title;
+    const p = document.createElement("p");
+    p.textContent = body;
+    li.append(h3, p);
+    return li;
+  };
+  byId("lab-steps").replaceChildren(
+    step("Snapshot", "The isolated VM is reverted to a clean snapshot, so every run starts identical."),
+    step("Run", "It really runs four copies of the test program — each rebuilt with a new hash and a new name — which drop a persistence unit from /tmp and beacon."),
+    step("Sysmon for Linux", "The kernel's process, file and network events are recorded by Sysmon for Linux."),
+    step("Fluent Bit → siem01", "Fluent Bit ships only this run's events to the OpenSearch SIEM over mTLS, then the VM powers off."),
+    step("Rules", "Sigma rules and Alerting monitors on siem01 catch the behaviour — real detection, not computed in this page."),
+    step("Validator", "A validator lines the findings up against the ground truth and writes the run shown above."),
+  );
+  const next = byId("lab-next");
+  next.textContent = "These events come from a real isolated VM, shipped to the OpenSearch SIEM behind ";
+  const link = document.createElement("a");
+  link.href = "/cluster/#correlation";
+  link.textContent = "the self-defending cluster";
+  next.append(link, ", where real rules catch them.");
 }
 
 function start(): void {

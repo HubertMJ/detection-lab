@@ -47,6 +47,10 @@ test.describe("detection lab preview at /lab/", () => {
     await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(VM_RUN) }));
     await page.route("**/cluster/api/lab/vm", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "off", last_restore: "2026-10-19T03:00:03Z", next_run: "2026-10-20T03:00:00Z" }) }));
     await page.goto("/lab/");
+    // the animated replay: controls, feeds and the copy lanes
+    await expect(page.locator(".lab-rp-play")).toBeVisible();
+    await expect(page.locator(".lab-rp-lane")).toHaveCount(2);
+    await expect(page.locator(".lab-rp-feed").first()).toBeVisible();
     await expect(page.locator(".lab-vm-timeline")).toBeVisible();
     await expect(page.locator(".lab-vm-copy")).toHaveCount(2);
     await expect(page.locator(".lab-vm-status__state")).toContainText("powered off");

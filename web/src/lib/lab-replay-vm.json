@@ -72,7 +72,8 @@
       "pid": 1742, "ppid": 1203, "caught_by_hash": false,
       "events": [
         { "@timestamp": "2026-10-19T03:07:30.000Z", "offset_s": 405, "event.code": "1", "event.action": "process-create", "host.name": "lab-vm", "process.name": "svc-59974da9", "process.executable": "/tmp/svc-59974da9", "process.hash.sha256": "2f88e99b6e0b4425d857120da049f828341b8a923d509b95b3db17be42e64924", "process.pid": 1742, "process.parent.pid": 1203 },
-        { "@timestamp": "2026-10-19T03:07:30.400Z", "offset_s": 405, "event.code": "11", "event.action": "file-create", "host.name": "lab-vm", "process.name": "svc-59974da9", "file.path": "/home/labuser/.config/systemd/user/svc-59974da9.service" }
+        { "@timestamp": "2026-10-19T03:07:30.400Z", "offset_s": 405, "event.code": "11", "event.action": "file-create", "host.name": "lab-vm", "process.name": "svc-59974da9", "file.path": "/home/labuser/.config/systemd/user/svc-59974da9.service" },
+        { "@timestamp": "2026-10-19T03:07:35.000Z", "offset_s": 410, "event.code": "3", "event.action": "network-connection", "host.name": "lab-vm", "process.name": "svc-59974da9", "destination.ip": "lab beacon :8080", "destination.port": 8080 }
       ],
       "ground_truth": { "@timestamp": "2026-10-19T03:07:30.000Z", "host": "lab-vm", "techniques": ["T1204.002", "T1543.002", "T1071.001", "T1027"], "variant_sha256": "2f88e99b6e0b4425d857120da049f828341b8a923d509b95b3db17be42e64924" },
       "findings": [ { "rule": "lab-persistence-user-unit-from-tmp", "delay_s": 11, "at_offset_s": 416 }, { "rule": "sdp-lab-beaconing", "delay_s": 40, "at_offset_s": 445 } ]
@@ -82,7 +83,8 @@
       "pid": 1871, "ppid": 1203, "caught_by_hash": false,
       "events": [
         { "@timestamp": "2026-10-19T03:10:30.000Z", "offset_s": 585, "event.code": "1", "event.action": "process-create", "host.name": "lab-vm", "process.name": "svc-f44260be", "process.executable": "/tmp/svc-f44260be", "process.hash.sha256": "a695e187c4126426b3b4788bd679cdb9b13f7fc4f53aa7b687955ea3c8c17af0", "process.pid": 1871, "process.parent.pid": 1203 },
-        { "@timestamp": "2026-10-19T03:10:30.400Z", "offset_s": 585, "event.code": "11", "event.action": "file-create", "host.name": "lab-vm", "process.name": "svc-f44260be", "file.path": "/home/labuser/.config/systemd/user/svc-f44260be.service" }
+        { "@timestamp": "2026-10-19T03:10:30.400Z", "offset_s": 585, "event.code": "11", "event.action": "file-create", "host.name": "lab-vm", "process.name": "svc-f44260be", "file.path": "/home/labuser/.config/systemd/user/svc-f44260be.service" },
+        { "@timestamp": "2026-10-19T03:10:35.000Z", "offset_s": 590, "event.code": "3", "event.action": "network-connection", "host.name": "lab-vm", "process.name": "svc-f44260be", "destination.ip": "lab beacon :8080", "destination.port": 8080 }
       ],
       "ground_truth": { "@timestamp": "2026-10-19T03:10:30.000Z", "host": "lab-vm", "techniques": ["T1204.002", "T1543.002", "T1071.001", "T1027"], "variant_sha256": "a695e187c4126426b3b4788bd679cdb9b13f7fc4f53aa7b687955ea3c8c17af0" },
       "findings": [ { "rule": "lab-persistence-user-unit-from-tmp", "delay_s": 12, "at_offset_s": 597 }, { "rule": "sdp-lab-beaconing", "delay_s": 41, "at_offset_s": 626 } ]
