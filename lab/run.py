@@ -1,25 +1,51 @@
 #!/usr/bin/env python3
 """Drive one real detection-lab run end to end (variant A).
 
-Chains the whole run that a cluster CronJob invokes:
+This is the entrypoint the cluster CronJob invokes (the lab-runner image's
+`python3 /app/lab/run.py`, with no arguments). It chains the whole run:
 
   1. generate  - synthetic sdp-lab events + the run document (reuse generate.py);
   2. index     - bulk-index the events into the sdp-lab data stream over mutual
-                 TLS with the lab-writer identity (reuse indexer.py);
-  3. poll       - poll Security Analytics findings (of the lab detector) and
+                 TLS with the single lab-runner identity (reuse indexer.py);
+  3. discover  - resolve the Security Analytics detector id and the Alerting
+                 monitor id by NAME (their ids are OpenSearch-generated and
+                 dynamic, so they are never hard-coded);
+  4. poll      - poll Security Analytics findings (of the lab detector) and
                  Alerting alerts (of the lab monitor) for this run, by lab.run_id
                  and a time window, until the detector and the monitor have both
                  fired or a timeout elapses;
-  4. validate  - parse the real findings/alerts and compare them with the ground
+  5. validate  - parse the real findings/alerts and compare them with the ground
                  truth (reuse validate.py), producing the final run document;
-  5. publish   - index that run document into the lab-runs index over mutual TLS
-                 with the lab-validator identity (a small bulk of one document).
+  6. publish   - index that run document into the lab-runs index over the same
+                 mutual-TLS identity (a small bulk of one document).
 
-Every endpoint, index, detector/monitor id and certificate comes from CLI
-arguments or the environment: there are no defaults for them and no secrets in
-this file. It exits non-zero on any failure, and re-running it is idempotent-ish
-(a fresh run_id each time unless one is pinned; the latest run document wins by
-run.finished_at). Standard library only, so the container image stays tiny.
+Environment contract (what the CronJob sets; every value reaches run.py through
+the environment or an equivalent CLI flag, never baked in, no secrets in this
+file). The authoritative counterpart is the CronJob manifest
+`cluster/infra/lab/cronjob.yaml` in the self-defending-portfolio repository (a
+different repo, so it cannot be imported here); test_lab.py freezes this set so
+the two cannot drift apart silently:
+
+  required (no default):
+    SIEM_URL         - https://host:port of OpenSearch           (--endpoint)
+    SIEM_CLIENT_CERT - the lab-runner client certificate (PEM)   (--client-cert)
+    SIEM_CLIENT_KEY  - the lab-runner client key (PEM)           (--client-key)
+    SIEM_CA_CERT     - CA bundle verifying the server (PEM)       (--cacert)
+  optional (defaulted, so the CronJob need not set them):
+    LAB_MODE          - run mode, "generated"                    (--mode)
+    LAB_STREAM        - events data stream, default "sdp-lab"     (--stream)
+    LAB_RUNS_INDEX    - run-document index, default "lab-runs"    (--runs-index)
+    LAB_DETECTOR_NAME - detector to resolve, default "sdp-lab-rules"
+    LAB_MONITOR_NAME  - monitor to resolve,
+                        default "sdp-git: lab-polymorphic-beacon"
+
+There is ONE identity now: the lab-runner client certificate carries every
+permission the run needs (write sdp-lab, read the detector's findings and the
+monitor's alerts, write lab-runs), so SIEM_CLIENT_CERT/KEY serve indexing,
+polling and publishing alike. It exits non-zero on any failure, and re-running
+it is idempotent-ish (a fresh run_id each time unless one is pinned; the latest
+run document wins by run.finished_at). Standard library only, so the container
+image stays tiny.
 """
 
 from __future__ import annotations
@@ -41,6 +67,8 @@ import validate
 # OpenSearch plugin API paths are protocol constants, not configuration.
 FINDINGS_PATH = "/_plugins/_security_analytics/findings/_search"
 ALERTS_PATH = "/_plugins/_alerting/monitors/alerts"
+DETECTORS_SEARCH_PATH = "/_plugins/_security_analytics/detectors/_search"
+MONITORS_SEARCH_PATH = "/_plugins/_alerting/monitors/_search"
 
 
 def _ssl_context(certfile: str, keyfile: str, cafile: str | None) -> ssl.SSLContext:
@@ -71,6 +99,45 @@ def _get_json(endpoint: str, path: str, ctx: ssl.SSLContext) -> dict:
     if status >= 300:
         raise SystemExit(f"GET {path} failed: HTTP {status} {payload.decode('utf-8', 'replace')}")
     return json.loads(payload)
+
+
+def _post_json(endpoint: str, path: str, ctx: ssl.SSLContext, body: dict) -> dict:
+    data = json.dumps(body, separators=(",", ":")).encode("utf-8")
+    status, payload = https("POST", endpoint, path, ctx, body=data,
+                            headers={"Content-Type": "application/json"})
+    if status >= 300:
+        raise SystemExit(f"POST {path} failed: HTTP {status} {payload.decode('utf-8', 'replace')}")
+    return json.loads(payload)
+
+
+def _resolve_id_by_name(resp: dict, name: str, kind: str) -> str:
+    """The single OpenSearch document whose `_source.name` equals `name`, else a
+    clear failure. The name is matched exactly (the search query only narrows the
+    candidates); a missing or ambiguous name is fatal rather than guessed."""
+    hits = ((resp.get("hits") or {}).get("hits")) or []
+    matches = [h for h in hits
+               if (h.get("_source") or {}).get("name") == name
+               and (h.get("_source") or {}).get("type") != "workflow"]
+    if not matches:
+        raise SystemExit(f"no {kind} named {name!r} found "
+                         f"(searched {len(hits)} candidate(s))")
+    if len(matches) > 1:
+        raise SystemExit(f"{len(matches)} {kind}s named {name!r} found; cannot resolve a single id")
+    return matches[0]["_id"]
+
+
+def discover_detector_id(endpoint: str, ctx: ssl.SSLContext, name: str) -> str:
+    """Resolve the Security Analytics detector id for the detector named `name`."""
+    body = {"size": 100, "query": {"match_phrase": {"name": name}}}
+    resp = _post_json(endpoint, DETECTORS_SEARCH_PATH, ctx, body)
+    return _resolve_id_by_name(resp, name, "detector")
+
+
+def discover_monitor_id(endpoint: str, ctx: ssl.SSLContext, name: str) -> str:
+    """Resolve the Alerting monitor id for the monitor named `name`."""
+    body = {"size": 100, "query": {"match_phrase": {"name": name}}}
+    resp = _post_json(endpoint, MONITORS_SEARCH_PATH, ctx, body)
+    return _resolve_id_by_name(resp, name, "monitor")
 
 
 def _run_findings(raw_findings: dict, run_id: str) -> list:
@@ -120,32 +187,37 @@ def publish_run_doc(endpoint: str, index: str, run_doc: dict,
         raise SystemExit(f"publish reported errors: {payload.decode('utf-8', 'replace')}")
 
 
-def _env_arg(p, flag: str, env: str, *, help: str, required: bool = True) -> None:
+def _env_arg(p, flag: str, env: str, *, help: str, default=None, required: bool = True) -> None:
     """A flag that falls back to an environment variable. Nothing is baked in."""
-    default = os.environ.get(env)
-    p.add_argument(flag, default=default,
-                   help=f"{help} (env {env})" + ("" if required else " [optional]"))
+    value = os.environ.get(env, default)
+    note = "" if required else " [optional]"
+    p.add_argument(flag, default=value, help=f"{help} (env {env}{note})")
 
 
 def parse_args(argv):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    _env_arg(p, "--endpoint", "LAB_ENDPOINT", help="https://host:port of OpenSearch")
-    _env_arg(p, "--stream", "LAB_STREAM", help="events data stream, e.g. sdp-lab")
-    _env_arg(p, "--runs-index", "LAB_RUNS_INDEX", help="index for the run document, e.g. lab-runs")
-    _env_arg(p, "--detector-id", "LAB_DETECTOR_ID", help="Security Analytics detector id")
-    _env_arg(p, "--monitor-id", "LAB_MONITOR_ID", help="Alerting monitor id")
-    _env_arg(p, "--writer-cert", "LAB_WRITER_CERT", help="lab-writer client certificate (PEM)")
-    _env_arg(p, "--writer-key", "LAB_WRITER_KEY", help="lab-writer client key (PEM)")
-    _env_arg(p, "--validator-cert", "LAB_VALIDATOR_CERT", help="lab-validator client certificate (PEM)")
-    _env_arg(p, "--validator-key", "LAB_VALIDATOR_KEY", help="lab-validator client key (PEM)")
-    _env_arg(p, "--cacert", "LAB_CACERT", help="CA bundle verifying the server (PEM)", required=False)
+    # Connection + single identity (required; the CronJob always supplies these).
+    _env_arg(p, "--endpoint", "SIEM_URL", help="https://host:port of OpenSearch")
+    _env_arg(p, "--client-cert", "SIEM_CLIENT_CERT", help="lab-runner client certificate (PEM)")
+    _env_arg(p, "--client-key", "SIEM_CLIENT_KEY", help="lab-runner client key (PEM)")
+    _env_arg(p, "--cacert", "SIEM_CA_CERT", help="CA bundle verifying the server (PEM)")
+    # Stream / index / detection names (defaulted; overridable but not required).
+    _env_arg(p, "--stream", "LAB_STREAM", default="sdp-lab",
+             help="events data stream", required=False)
+    _env_arg(p, "--runs-index", "LAB_RUNS_INDEX", default="lab-runs",
+             help="index for the run document", required=False)
+    _env_arg(p, "--detector-name", "LAB_DETECTOR_NAME", default="sdp-lab-rules",
+             help="Security Analytics detector to resolve by name", required=False)
+    _env_arg(p, "--monitor-name", "LAB_MONITOR_NAME", default="sdp-git: lab-polymorphic-beacon",
+             help="Alerting monitor to resolve by name", required=False)
+    p.add_argument("--mode", default=os.environ.get("LAB_MODE", "generated"),
+                   choices=["generated"], help="run mode (env LAB_MODE)")
     # Generation parameters (match generate.py; not endpoints or secrets).
     p.add_argument("--copies", type=int, default=4)
     p.add_argument("--hosts", default="ws1.lab.local,ws2.lab.local")
     p.add_argument("--beacon-ip", default="198.51.100.10",
                    help="synthetic lab beacon address (RFC 5737 TEST-NET-2)")
     p.add_argument("--beacon-port", type=int, default=8080)
-    p.add_argument("--mode", default="generated", choices=["generated"])
     p.add_argument("--run-id", default=None)
     p.add_argument("--workdir", default=None, help="where to write events.ndjson/run.json (default: temp)")
     p.add_argument("--timeout-s", type=int, default=600, help="max seconds to wait for detections")
@@ -162,8 +234,7 @@ def _require(args, names: list[str]) -> None:
 
 def main(argv):
     args = parse_args(argv)
-    _require(args, ["endpoint", "stream", "runs-index", "detector-id", "monitor-id",
-                    "writer-cert", "writer-key", "validator-cert", "validator-key"])
+    _require(args, ["endpoint", "client-cert", "client-key", "cacert"])
     if args.copies < 1:
         raise SystemExit("--copies must be >= 1")
     hosts = [h.strip() for h in args.hosts.split(",") if h.strip()]
@@ -173,6 +244,9 @@ def main(argv):
     now = datetime.datetime.now(datetime.timezone.utc)
     start = now.replace(microsecond=0)
     run_id = args.run_id or generate._run_id(now)
+
+    # One identity, one TLS context, for every operation (index, search, publish).
+    ctx = _ssl_context(args.client_cert, args.client_key, args.cacert)
 
     workdir = args.workdir
     import tempfile
@@ -192,22 +266,27 @@ def main(argv):
                 fh.write("\n")
         print(f"generated run {run_id}: {len(events)} events -> {nd_path}", flush=True)
 
-        # 2. index events (lab-writer)
-        writer_ctx = _ssl_context(args.writer_cert, args.writer_key, args.cacert)
+        # 2. index events (lab-runner identity)
         body = indexer.build_bulk_body(nd_path, args.stream)
-        result = indexer.post_bulk(args.endpoint, body, args.writer_cert, args.writer_key, args.cacert)
+        result = indexer.post_bulk(args.endpoint, body, args.client_cert, args.client_key, args.cacert)
         if result.get("errors"):
             raise SystemExit("bulk index reported errors")
         print(f"indexed {len(result.get('items', []))} events into {args.stream}", flush=True)
 
-        # 3. poll findings + alerts
-        raw_findings, raw_alerts = poll(args.endpoint, writer_ctx, args.detector_id,
-                                        args.monitor_id, run_id, args.timeout_s,
+        # 3. discover the detector and monitor ids by name (ids are dynamic)
+        detector_id = discover_detector_id(args.endpoint, ctx, args.detector_name)
+        monitor_id = discover_monitor_id(args.endpoint, ctx, args.monitor_name)
+        print(f"resolved detector {args.detector_name!r} -> {detector_id}, "
+              f"monitor {args.monitor_name!r} -> {monitor_id}", flush=True)
+
+        # 4. poll findings + alerts
+        raw_findings, raw_alerts = poll(args.endpoint, ctx, detector_id,
+                                        monitor_id, run_id, args.timeout_s,
                                         args.poll_interval_s)
         print(f"detector and monitor fired: {len(_run_findings(raw_findings, run_id))} "
               f"finding(s), {len(raw_alerts.get('alerts', []))} alert(s)", flush=True)
 
-        # 4. validate
+        # 5. validate
         findings = validate.parse_sa(raw_findings, raw_alerts, run_doc)
         final = validate.validate(run_doc, findings)
         out_bytes = json.dumps(final, separators=(",", ":")).encode("utf-8")
@@ -215,9 +294,8 @@ def main(argv):
             raise SystemExit(f"final run document is {len(out_bytes)} bytes, over the 64 KiB cap")
         validate._assert_no_leak(out_bytes)
 
-        # 5. publish (lab-validator)
-        validator_ctx = _ssl_context(args.validator_cert, args.validator_key, args.cacert)
-        publish_run_doc(args.endpoint, args.runs_index, final, validator_ctx)
+        # 6. publish (same lab-runner identity)
+        publish_run_doc(args.endpoint, args.runs_index, final, ctx)
         caught = sum(1 for v in final["variants"] if v["caught_by_hash"])
         inc = final["incident"]["opened_at_variant"]
         print(f"published run {run_id} to {args.runs_index}: "

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bulk-index events.ndjson into an OpenSearch data stream over mutual TLS.
 
-Thin wrapper for use on siem01 with the lab-writer identity. The client
+Thin wrapper for use on siem01 with the lab-runner identity. The client
 certificate and key are passed as arguments and read from disk at run time;
 there are no credentials in this file and no default endpoint. Uses the bulk
 "create" action with no _id, which is what a data stream requires.
