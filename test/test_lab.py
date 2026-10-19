@@ -7,11 +7,13 @@ import os
 import re
 import sys
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "lab"))
 
 import generate as g  # noqa: E402
+import run as r  # noqa: E402
 import validate as v  # noqa: E402
 
 # The fields allowed on an sdp-lab event (the data contract).
@@ -231,6 +233,137 @@ class SAParserTest(unittest.TestCase):
                               "198.51.100.10", 8080, RAW_START, "lab-20260101T000000Z-000000", "generated")
         raw_findings, _ = self._raw()
         self.assertEqual(v.parse_sa_findings(raw_findings, other), [])
+
+
+# The exact environment contract run.py consumes. Its authoritative counterpart
+# is cluster/infra/lab/cronjob.yaml in the self-defending-portfolio repository (a
+# different repo, which cannot be imported here), so this test freezes the set:
+# renaming or adding an env name in run.py breaks it, forcing the CronJob to be
+# kept in step. The CronJob supplies the required four plus LAB_MODE; the rest are
+# defaulted so they are never required.
+REQUIRED_ENV = {"SIEM_URL", "SIEM_CLIENT_CERT", "SIEM_CLIENT_KEY", "SIEM_CA_CERT"}
+OPTIONAL_ENV = {"LAB_MODE", "LAB_STREAM", "LAB_RUNS_INDEX",
+                "LAB_DETECTOR_NAME", "LAB_MONITOR_NAME"}
+CRONJOB_ENV = {
+    "SIEM_URL": "https://10.4.2.10:9200",
+    "SIEM_CLIENT_CERT": "/etc/lab-runner/siem/tls.crt",
+    "SIEM_CLIENT_KEY": "/etc/lab-runner/siem/tls.key",
+    "SIEM_CA_CERT": "/etc/lab-runner/siem/ca.crt",
+    "LAB_MODE": "generated",
+}
+
+
+class RunEnvContractTest(unittest.TestCase):
+    """Freeze the CronJob env contract so run.py and the SDP CronJob can't drift."""
+
+    def test_source_references_exactly_the_contract_env(self):
+        with open(os.path.join(HERE, "..", "lab", "run.py"), encoding="utf-8") as fh:
+            src = fh.read()
+        found = set(re.findall(r"\b(?:SIEM|LAB)_[A-Z_]+\b", src))
+        self.assertEqual(found, REQUIRED_ENV | OPTIONAL_ENV,
+                         "run.py references an env var outside the frozen contract "
+                         "(update cluster/infra/lab/cronjob.yaml in SDP to match)")
+
+    def test_cronjob_env_only_parses_and_satisfies_required(self):
+        # `python3 /app/lab/run.py` with ONLY the CronJob's env (no args) must parse
+        # and pass the required-argument check.
+        with mock.patch.dict(os.environ, CRONJOB_ENV, clear=True):
+            args = r.parse_args([])
+            r._require(args, ["endpoint", "client-cert", "client-key", "cacert"])
+        self.assertEqual(args.endpoint, "https://10.4.2.10:9200")
+        self.assertEqual(args.client_cert, "/etc/lab-runner/siem/tls.crt")
+        self.assertEqual(args.client_key, "/etc/lab-runner/siem/tls.key")
+        self.assertEqual(args.cacert, "/etc/lab-runner/siem/ca.crt")
+        self.assertEqual(args.mode, "generated")
+
+    def test_optional_env_have_working_defaults(self):
+        with mock.patch.dict(os.environ, CRONJOB_ENV, clear=True):
+            args = r.parse_args([])
+        self.assertEqual(args.stream, "sdp-lab")
+        self.assertEqual(args.runs_index, "lab-runs")
+        self.assertEqual(args.detector_name, "sdp-lab-rules")
+        self.assertEqual(args.monitor_name, "sdp-git: lab-polymorphic-beacon")
+
+    def test_required_env_missing_fails_clearly(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            args = r.parse_args([])
+            with self.assertRaises(SystemExit) as ctx:
+                r._require(args, ["endpoint", "client-cert", "client-key", "cacert"])
+        self.assertIn("missing required argument(s)", str(ctx.exception))
+
+    def test_help_exits_zero(self):
+        with self.assertRaises(SystemExit) as ctx:
+            r.parse_args(["--help"])
+        self.assertEqual(ctx.exception.code, 0)
+
+
+class RunDiscoveryTest(unittest.TestCase):
+    """The detector/monitor ids are OpenSearch-generated and dynamic, so run.py
+    resolves them by name at runtime. The discovery request construction and the
+    exact-name resolution are unit-tested against a fake HTTP (no siem01)."""
+
+    ENDPOINT = "https://siem.example:9200"
+
+    def _fake_https(self, by_path):
+        calls = []
+
+        def fake(method, endpoint, path, ctx, body=None, headers=None):
+            calls.append({"method": method, "endpoint": endpoint, "path": path,
+                          "body": body, "headers": headers})
+            status, payload = by_path[path.split("?")[0]]
+            return status, json.dumps(payload).encode("utf-8")
+
+        return fake, calls
+
+    def test_discover_detector_builds_request_and_resolves_id(self):
+        resp = {"hits": {"hits": [
+            {"_id": "det-xyz", "_source": {"name": "sdp-lab-rules", "detector_type": "sdp_lab"}},
+            {"_id": "det-other", "_source": {"name": "some-other-detector"}},
+        ]}}
+        fake, calls = self._fake_https({r.DETECTORS_SEARCH_PATH: (200, resp)})
+        with mock.patch.object(r, "https", fake):
+            det_id = r.discover_detector_id(self.ENDPOINT, None, "sdp-lab-rules")
+        self.assertEqual(det_id, "det-xyz")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["method"], "POST")
+        self.assertEqual(calls[0]["path"], r.DETECTORS_SEARCH_PATH)
+        self.assertEqual(calls[0]["headers"], {"Content-Type": "application/json"})
+        sent = json.loads(calls[0]["body"])
+        self.assertEqual(sent["query"]["match_phrase"]["name"], "sdp-lab-rules")
+
+    def test_discover_monitor_builds_request_and_resolves_id(self):
+        name = "sdp-git: lab-polymorphic-beacon"
+        resp = {"hits": {"hits": [
+            {"_id": "mon-123", "_source": {"name": name, "enabled": True}},
+            {"_id": "wf-1", "_source": {"name": name, "type": "workflow"}},
+        ]}}
+        fake, calls = self._fake_https({r.MONITORS_SEARCH_PATH: (200, resp)})
+        with mock.patch.object(r, "https", fake):
+            mon_id = r.discover_monitor_id(self.ENDPOINT, None, name)
+        # The workflow hit with the same name is ignored; one real monitor resolves.
+        self.assertEqual(mon_id, "mon-123")
+        self.assertEqual(calls[0]["path"], r.MONITORS_SEARCH_PATH)
+        sent = json.loads(calls[0]["body"])
+        self.assertEqual(sent["query"]["match_phrase"]["name"], name)
+
+    def test_discover_fails_when_name_absent(self):
+        resp = {"hits": {"hits": [{"_id": "x", "_source": {"name": "unrelated"}}]}}
+        fake, _ = self._fake_https({r.DETECTORS_SEARCH_PATH: (200, resp)})
+        with mock.patch.object(r, "https", fake):
+            with self.assertRaises(SystemExit) as ctx:
+                r.discover_detector_id(self.ENDPOINT, None, "sdp-lab-rules")
+        self.assertIn("no detector named", str(ctx.exception))
+
+    def test_discover_fails_when_name_ambiguous(self):
+        resp = {"hits": {"hits": [
+            {"_id": "a", "_source": {"name": "sdp-lab-rules"}},
+            {"_id": "b", "_source": {"name": "sdp-lab-rules"}},
+        ]}}
+        fake, _ = self._fake_https({r.DETECTORS_SEARCH_PATH: (200, resp)})
+        with mock.patch.object(r, "https", fake):
+            with self.assertRaises(SystemExit) as ctx:
+                r.discover_detector_id(self.ENDPOINT, None, "sdp-lab-rules")
+        self.assertIn("cannot resolve a single id", str(ctx.exception))
 
 
 if __name__ == "__main__":

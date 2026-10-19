@@ -74,16 +74,28 @@ a real test binary belongs to variant B (an isolated VM), which is out of scope 
   isolated-VM copy from another run is ignored), uses the detector/alert time as the detection time,
   and opens the incident at the copy that first makes two distinct hashes beacon to one address. It
   emits only lab labels, never real hosts/addresses, and stays under 64 KiB.
-- **`run.py`** drives one real run end to end, the entrypoint a cluster CronJob invokes: it generates
-  the events and run document (`generate.py`), bulk-indexes the events into `sdp-lab` over mutual TLS
-  with the `lab-writer` identity (`indexer.py`), polls Security Analytics findings and Alerting alerts
-  for the run (by `lab.run_id` and a time window) until the detector and monitor have fired or it
-  times out, validates the real detections against the ground truth (`validate.py`), and indexes the
-  final run document into the `lab-runs` index over mutual TLS with the `lab-validator` identity.
-  Every endpoint, index, detector/monitor id and certificate comes from `--flags` or `LAB_*`
-  environment variables — no defaults, no secrets in the file — and it exits non-zero on any failure.
+- **`run.py`** drives one real run end to end, the entrypoint a cluster CronJob invokes
+  (`python3 /app/lab/run.py`, no arguments): it generates the events and run document (`generate.py`),
+  bulk-indexes the events into `sdp-lab` over mutual TLS (`indexer.py`), **resolves the Security
+  Analytics detector id and the Alerting monitor id by name** (the ids are OpenSearch-generated and
+  dynamic, so they are discovered at runtime, never hard-coded), polls those findings and alerts for
+  the run (by `lab.run_id` and a time window) until the detector and monitor have fired or it times
+  out, validates the real detections against the ground truth (`validate.py`), and indexes the final
+  run document into the `lab-runs` index. There is **one identity**: the `lab-runner` client
+  certificate carries every permission the run needs (write `sdp-lab`, read the detector's findings
+  and the monitor's alerts, write `lab-runs`), so it serves indexing, polling and publishing alike.
+  The environment contract (no secrets in the file; `--flags` mirror every variable):
+  - required: `SIEM_URL`, `SIEM_CLIENT_CERT`, `SIEM_CLIENT_KEY`, `SIEM_CA_CERT`;
+  - optional, defaulted so the CronJob need not set them: `LAB_MODE` (`generated`), `LAB_STREAM`
+    (`sdp-lab`), `LAB_RUNS_INDEX` (`lab-runs`), `LAB_DETECTOR_NAME` (`sdp-lab-rules`),
+    `LAB_MONITOR_NAME` (`sdp-git: lab-polymorphic-beacon`).
+
+  It exits non-zero on any failure (including a detector/monitor name that resolves to no, or more
+  than one, document). The contract is frozen by a test (`test/test_lab.py`) against its counterpart
+  manifest `cluster/infra/lab/cronjob.yaml` in the self-defending-portfolio repository, so the two
+  cannot drift silently.
 - **`indexer.py`** bulk-POSTs `events.ndjson` into an OpenSearch data stream over mutual TLS
-  (`--cert`/`--key`, the `lab-writer` identity on siem01). Bulk `create` with no `_id`, as a data
+  (`--cert`/`--key`, the `lab-runner` identity on siem01). Bulk `create` with no `_id`, as a data
   stream requires. No credentials in the file.
 
 Example:
@@ -106,8 +118,8 @@ is standard library only, nothing else is installed and the image stays tiny.
 on every PR, then on `main` builds the image, gates it with Trivy (fixable CRITICAL/HIGH fail the
 build), emits an SPDX SBOM and signs the image and SBOM with cosign keyless — the same pipeline as
 the web image. The two share one detection-lab workflow identity, so the cluster's Kyverno policy
-trusts both. The image bakes in no endpoints or secrets: the CronJob supplies them through `LAB_*`
-environment variables and mounts the `lab-writer`/`lab-validator` certificates.
+trusts both. The image bakes in no endpoints or secrets: the CronJob supplies them through
+`SIEM_*`/`LAB_*` environment variables and mounts the single `lab-runner` client certificate.
 
 ## The web app (`web/`)
 
