@@ -1740,3 +1740,31 @@ html.slide-out-backward body > :not(.site-header) {
   .lab-vm-counts { grid-template-columns: repeat(2, 1fr); }
   .lab-vm-copies, .lab-vm-verdict { grid-template-columns: 1fr; }
 }
+
+/* ---- variant B live layer: VM status strip + run history ---- */
+.lab-vm-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.55rem 0.85rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+.lab-vm-status__dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--text-muted); flex: none; }
+.lab-vm-status__dot[data-state="running"] { background: var(--good); box-shadow: 0 0 0 3px var(--good-bg); }
+.lab-vm-status__dot[data-state="off"] { background: var(--text-muted); }
+.lab-vm-status__dot[data-state="unknown"] { background: var(--warning); }
+.lab-vm-status__state { font-weight: 600; }
+.lab-vm-status__meta { color: var(--text-muted); font-size: 0.78rem; }
+.lab-vm-hist { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.25rem; font-size: 0.82rem; color: var(--text-muted); }
+.lab-vm-hist__dots { display: inline-flex; gap: 0.3rem; }
+.lab-vm-hist__dot { width: 0.7rem; height: 0.7rem; border-radius: 3px; background: var(--good); display: inline-block; }
+.lab-vm-hist__dot[data-ok="false"] { background: var(--critical); }
+.lab-vm-raw { margin-top: 0.4rem; border-top: 1px dashed var(--border); }
+.lab-vm-raw > summary { cursor: pointer; padding: 0.55rem 0.85rem; font: 0.72rem/1.2 var(--font-mono); color: var(--text-muted); }
+.lab-vm-raw > summary:hover { color: var(--text); }
+.lab-vm-raw__pre { margin: 0; padding: 0 0.85rem 0.85rem; font-size: 0.7rem; line-height: 1.5; overflow-x: auto; color: var(--text-muted); white-space: pre; }

@@ -41,6 +41,22 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(page.locator('#lab-next a[href="/cluster/#correlation"]')).toHaveCount(1);
   });
 
+  // A real run on the isolated VM (variant B): the panel draws the machine — the lifecycle timeline,
+  // per-copy evidence with raw Sysmon, the status strip and run history — not the copy-picker replay.
+  test("draws the isolated-VM (variant B) run with its live layer", async ({ page }) => {
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(VM_RUN) }));
+    await page.route("**/cluster/api/lab/vm", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "off", last_restore: "2026-10-19T03:00:03Z", next_run: "2026-10-20T03:00:00Z" }) }));
+    await page.goto("/lab/");
+    await expect(page.locator(".lab-vm-timeline")).toBeVisible();
+    await expect(page.locator(".lab-vm-copy")).toHaveCount(2);
+    await expect(page.locator(".lab-vm-status__state")).toContainText("powered off");
+    await expect(page.locator(".lab-vm-hist__dot")).toHaveCount(2);
+    await expect(page.locator(".lab-vm-raw").first()).toBeVisible();
+    // the sample is labelled a sample, never a real run
+    await expect(page.locator(".lab-note")).toContainText("Sample");
+    await expect(page.locator("#lab-replay-eyebrow")).toContainText("Sample run");
+  });
+
   // No endpoint (the standalone image): the page falls back to the bundled synthetic sample, labelled
   // as generated, and still renders the whole preview.
   test("falls back to the bundled synthetic sample when the API 404s", async ({ page }) => {
@@ -126,5 +142,38 @@ const REAL_RUN = {
   rules: [{ id: "ioc-known-hash", title: "hash", kind: "sigma", technique: "T1204.002", score: 60, logic: "x" }],
   variants: [
     { n: 1, host: "ws1", sha256: "a".repeat(64), renamed: "a.exe", events: [], ground_truth: { "@timestamp": "2026-01-01T00:00:00Z", host: "ws1", techniques: ["T1204.002"], variant_sha256: "a".repeat(64) }, findings: [{ rule: "ioc-known-hash", delay_s: 1 }] },
+  ],
+} as const;
+
+// A sample isolated-VM run (variant B): sample:true, so the page shows it as a sample, never real.
+const VM_RUN = {
+  schema: 1,
+  sample: true,
+  run: { id: "lab-20261019T030045Z-7f3a1c", mode: "isolated-vm", started_at: "2026-10-19T03:00:45Z", finished_at: "2026-10-19T03:11:36Z", duration_s: 651 },
+  scenario: { id: "C", title: "stand-in", summary: "stand-in" },
+  artefact: { name: "update-helper", path: "/tmp/update-helper" },
+  beacon: "lab beacon :8080",
+  risk_threshold: 100,
+  counters: { processes: 2, unique_hashes: 2, events: 6, findings: 3, incidents: 1 },
+  lifecycle: [
+    { marker: "rollback", offset_s: 0, label: "Reverted to clean snapshot" },
+    { marker: "poweroff_requested", offset_s: 651, label: "Powered off" },
+  ],
+  history: [
+    { id: "lab-20261019T030045Z-7f3a1c", finished_at: "2026-10-19T03:11:36Z", duration_s: 651, ok: true },
+    { id: "lab-20261018T030041Z-2b9e04", finished_at: "2026-10-18T03:11:28Z", duration_s: 643, ok: false },
+  ],
+  incident: { opened_at_variant: 2, delay_s: 41, key: "beacon", at_offset_s: 272 },
+  techniques: { expected: ["T1027", "T1204.002"], detected: ["T1204.002"] },
+  rules: [{ id: "ioc-lab-known-hash", title: "hash", kind: "sigma", technique: "T1204.002", score: 50, logic: "x" }],
+  variants: [
+    { n: 1, host: "lab-vm", sha256: "a".repeat(64), renamed: "update-helper", pid: 1487, ppid: 1203, caught_by_hash: true,
+      events: [{ "@timestamp": "2026-10-19T03:01:30Z", "event.code": "1", "event.action": "process-create", "host.name": "lab-vm", "process.name": "update-helper", "process.executable": "/tmp/update-helper", "process.hash.sha256": "a".repeat(64), "process.pid": 1487, "process.parent.pid": 1203 }],
+      ground_truth: { "@timestamp": "2026-10-19T03:01:30Z", host: "lab-vm", techniques: ["T1204.002"], variant_sha256: "a".repeat(64) },
+      findings: [{ rule: "ioc-lab-known-hash", delay_s: 12, at_offset_s: 57 }] },
+    { n: 2, host: "lab-vm", sha256: "b".repeat(64), renamed: "svc-d72cfbd3", pid: 1613, ppid: 1203, caught_by_hash: false,
+      events: [{ "@timestamp": "2026-10-19T03:04:30Z", "event.code": "3", "event.action": "network-connection", "host.name": "lab-vm", "process.name": "svc-d72cfbd3", "destination.ip": "lab beacon :8080", "destination.port": 8080 }],
+      ground_truth: { "@timestamp": "2026-10-19T03:04:30Z", host: "lab-vm", techniques: ["T1204.002", "T1027"], variant_sha256: "b".repeat(64) },
+      findings: [] },
   ],
 } as const;

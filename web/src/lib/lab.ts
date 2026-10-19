@@ -83,6 +83,27 @@ export interface LabReplay {
   lifecycle?: LabLifecycle[];
   counters?: LabCounters;
   incident?: { opened_at_variant: number | null; delay_s: number | null; key: string; at_offset_s?: number };
+  /** Variant B: the last few runs, newest first, for the run-history dots. */
+  history?: LabHistoryRun[];
+}
+
+/** One past run, for the history dots. */
+export interface LabHistoryRun {
+  id: string;
+  finished_at: string;
+  duration_s?: number;
+  ok: boolean;
+}
+
+/** The isolated VM's live state, from GET /cluster/api/lab/vm (read-only). */
+export interface LabVmStatus {
+  state: "off" | "running";
+  last_restore?: string;
+  next_run?: string;
+}
+
+export function isLabVmStatus(v: unknown): v is LabVmStatus {
+  return isObj(v) && (v.state === "off" || v.state === "running");
 }
 
 const isStr = (v: unknown): v is string => typeof v === "string" && v.length > 0;

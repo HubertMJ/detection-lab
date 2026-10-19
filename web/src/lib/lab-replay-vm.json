@@ -17,6 +17,15 @@
   "beacon": "lab beacon :8080",
   "risk_threshold": 100,
   "counters": { "processes": 4, "unique_hashes": 4, "events": 37, "findings": 7, "incidents": 1 },
+  "history": [
+    { "id": "lab-20261019T030045Z-7f3a1c", "finished_at": "2026-10-19T03:11:36.000Z", "duration_s": 651, "ok": true },
+    { "id": "lab-20261018T030041Z-2b9e04", "finished_at": "2026-10-18T03:11:28.000Z", "duration_s": 643, "ok": true },
+    { "id": "lab-20261017T030052Z-c15a7e", "finished_at": "2026-10-17T03:11:40.000Z", "duration_s": 648, "ok": true },
+    { "id": "lab-20261016T030039Z-9d4c11", "finished_at": "2026-10-16T03:10:22.000Z", "duration_s": 583, "ok": false },
+    { "id": "lab-20261015T030047Z-71f2aa", "finished_at": "2026-10-15T03:11:33.000Z", "duration_s": 646, "ok": true },
+    { "id": "lab-20261014T030044Z-0ab3c9", "finished_at": "2026-10-14T03:11:31.000Z", "duration_s": 647, "ok": true },
+    { "id": "lab-20261013T030050Z-e82d16", "finished_at": "2026-10-13T03:11:35.000Z", "duration_s": 645, "ok": true }
+  ],
   "lifecycle": [
     { "marker": "rollback", "offset_s": 0, "label": "Reverted to clean snapshot" },
     { "marker": "start", "offset_s": 3, "label": "VM started" },

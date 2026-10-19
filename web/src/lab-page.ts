@@ -8,9 +8,10 @@
 
 import labReplay from "./lib/lab-replay.json";
 import { byId } from "./lib/dom";
-import { isLabReplay } from "./lib/lab";
+import { isLabReplay, isLabVmStatus, type LabVmStatus } from "./lib/lab";
 import { setupThemeToggle } from "./lib/theme-toggle";
 import { mountLab } from "./ui/lab";
+import { updateVmStatus } from "./ui/lab-vm";
 
 document.documentElement.classList.add("js");
 setupThemeToggle();
@@ -33,6 +34,55 @@ async function fetchLatest(): Promise<unknown | null> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// The isolated VM's live state (read-only). The page polls it so the status strip and the "LIVE"
+// badge are real, never a mock-up; absent or slow, the strip simply reads "status unavailable".
+const VM_URL = "/cluster/api/lab/vm";
+async function fetchVm(): Promise<unknown | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LATEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(VM_URL, { headers: { accept: "application/json" }, signal: controller.signal });
+    return res.ok ? ((await res.json()) as unknown) : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+let vmPoll: number | undefined;
+let lastStatus: LabVmStatus | null = null;
+let lastCheck = 0;
+let followed = false;
+
+/** Poll the VM status every 30 s (and tick "checked Ns ago" each second). When the VM is running a
+ * run, flip the badge to LIVE and re-fetch the latest run once, so the page follows the 03:00 run. */
+function startVmPolling(reload: () => void): void {
+  if (vmPoll !== undefined) return; // one poller for the life of the page
+  const refresh = (): void => {
+    const strip = document.getElementById("lab-vm-status");
+    if (strip) updateVmStatus(strip, lastStatus, Math.max(0, Math.round((Date.now() - lastCheck) / 1000)));
+  };
+  const poll = async (): Promise<void> => {
+    const data = await fetchVm();
+    lastStatus = isLabVmStatus(data) ? data : null;
+    lastCheck = Date.now();
+    refresh();
+    if (lastStatus?.state === "running") {
+      byId("lab-eyebrow").textContent = "Detection lab · LIVE";
+      if (!followed) {
+        followed = true;
+        reload();
+      }
+    } else {
+      followed = false;
+    }
+  };
+  void poll();
+  vmPoll = window.setInterval(() => void poll(), 30000);
+  window.setInterval(refresh, 1000);
 }
 
 // The static hero describes the bundled sample ("design preview", "not a run on real machines").
@@ -96,8 +146,12 @@ function start(): void {
     void fetchLatest().then((data) => {
       if (!isLabReplay(data)) return;
       mountLab(panel, data);
-      if (data.run?.mode === "isolated-vm") heroVm(!data.sample);
-      else if (!data.sample) heroLive();
+      if (data.run?.mode === "isolated-vm") {
+        heroVm(!data.sample);
+        startVmPolling(upgrade);
+      } else if (!data.sample) {
+        heroLive();
+      }
     });
   };
   if (document.readyState === "complete") upgrade();

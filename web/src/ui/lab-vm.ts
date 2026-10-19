@@ -5,7 +5,7 @@
 // Nothing here runs by itself; it only renders the run document. Pure DOM building (no innerHTML).
 
 import { h } from "../lib/dom";
-import { type LabReplay, type LabVariant, shortHash } from "../lib/lab";
+import { type LabReplay, type LabVariant, type LabVmStatus, shortHash } from "../lib/lab";
 
 const RUN_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -28,6 +28,51 @@ function note(d: LabReplay): HTMLElement {
     h("span", { class: "tag tag--detect" }, "Live · real machine"),
     " a real run in an isolated lab" + dur + " · ",
     h("time", { datetime: d.run.finished_at }, RUN_DATE.format(new Date(d.run.finished_at))));
+}
+
+const RUN_TIME = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit" });
+const DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "short" });
+
+/** The live VM status strip. Rendered empty; lab-page.ts polls /cluster/api/lab/vm and fills it in
+ * via updateVmStatus, so it reads as a live system rather than a mock-up. */
+function statusStrip(): HTMLElement {
+  return h("div", { class: "lab-vm-status", id: "lab-vm-status" },
+    h("span", { class: "lab-vm-status__dot", "data-state": "unknown" }),
+    h("span", { class: "lab-vm-status__state" }, "checking VM…"),
+    h("span", { class: "lab-vm-status__meta mono" }, ""));
+}
+
+/** Update the strip from a poll of /cluster/api/lab/vm. `agoS` is seconds since the check. */
+export function updateVmStatus(strip: HTMLElement, status: LabVmStatus | null, agoS: number): void {
+  const dot = strip.querySelector<HTMLElement>(".lab-vm-status__dot");
+  const state = strip.querySelector<HTMLElement>(".lab-vm-status__state");
+  const meta = strip.querySelector<HTMLElement>(".lab-vm-status__meta");
+  if (!dot || !state || !meta) return;
+  if (!status) {
+    dot.dataset.state = "unknown";
+    state.textContent = "VM status unavailable";
+    meta.textContent = "";
+    return;
+  }
+  dot.dataset.state = status.state;
+  state.textContent = status.state === "running" ? "VM running — live run in progress" : "VM powered off";
+  const bits: string[] = [];
+  if (status.last_restore) bits.push(`restored ${DAY.format(new Date(status.last_restore))} ${RUN_TIME.format(new Date(status.last_restore))}`);
+  if (status.next_run) bits.push(`next run ${RUN_TIME.format(new Date(status.next_run))} UTC`);
+  bits.push(`checked ${agoS}s ago`);
+  meta.textContent = bits.join(" · ");
+}
+
+function history(d: LabReplay): HTMLElement | null {
+  if (!d.history || d.history.length === 0) return null;
+  const dots = d.history.slice(0, 7).map((r) =>
+    h("span", {
+      class: "lab-vm-hist__dot",
+      "data-ok": r.ok ? "true" : "false",
+      title: `${r.id} · ${r.ok ? "ok" : "failed"}${r.duration_s ? ` · ${mmss(r.duration_s)}` : ""}`,
+    }));
+  return h("div", { class: "lab-vm-hist" },
+    h("span", { class: "lab-vm-hist__l" }, "Last runs:"), h("span", { class: "lab-vm-hist__dots" }, dots));
 }
 
 function counters(d: LabReplay): HTMLElement | null {
@@ -124,7 +169,9 @@ export function mountLabVm(root: HTMLElement, d: LabReplay): void {
   root.replaceChildren(
     h("div", { class: "lab lab-vm" },
       note(d),
+      statusStrip(),
       counters(d),
+      history(d),
       h("h3", { class: "panel-title" }, "The machine's run, second by second"),
       lifecycle(d),
       h("h3", { class: "panel-title" }, "Four copies, four hashes, one behaviour"),
