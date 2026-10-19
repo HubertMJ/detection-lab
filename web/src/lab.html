@@ -42,9 +42,9 @@
 
   <section class="hero landing-hero" id="top" aria-labelledby="lab-title">
     <div class="wrap">
-      <p class="eyebrow">Detection lab · design preview</p>
+      <p class="eyebrow" id="lab-eyebrow">Detection lab · design preview</p>
       <h1 id="lab-title">When the hash and the name keep changing</h1>
-      <p class="hero__lead">A rule on a known hash catches one copy of a program. What catches the next three, when each has a new hash <strong>and a new name</strong>? This page replays one scenario from a synthetic sample: generated events, not a run on real machines.</p>
+      <p class="hero__lead" id="lab-lead">A rule on a known hash catches one copy of a program. What catches the next three, when each has a new hash <strong>and a new name</strong>? This page replays one scenario from a synthetic sample: generated events, not a run on real machines.</p>
     </div>
   </section>
 
@@ -74,7 +74,7 @@
         <li><h3>SIEM</h3><p>Sigma rules match single events; OpenSearch Alerting monitors count across them and score risk per entity.</p></li>
         <li><h3>Report</h3><p>Ground truth against findings, per technique: detected or missed, and how long it took.</p></li>
       </ol>
-      <p class="section__more">Next step: send the same events to the OpenSearch SIEM behind <a href="/cluster/#correlation">the self-defending cluster</a>, so the findings come from real rules instead of being computed in this page.</p>
+      <p class="section__more" id="lab-next">Next step: send the same events to the OpenSearch SIEM behind <a href="/cluster/#correlation">the self-defending cluster</a>, so the findings come from real rules instead of being computed in this page.</p>
     </div>
   </section>
 

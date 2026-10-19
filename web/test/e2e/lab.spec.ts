@@ -31,6 +31,14 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(page.locator(".lab-note time")).toContainText("3 Feb 2026");
     await expect(page.locator(".lab-note time")).toHaveAttribute("datetime", "2026-02-03T10:00:00Z");
     await expect(page.locator(".lab-table tbody tr")).not.toHaveCount(0);
+    // The hero follows the data too: "live", and the lead drops the "synthetic sample" disclaimer.
+    await expect(page.locator("#lab-eyebrow")).toContainText("live");
+    await expect(page.locator("#lab-lead")).toContainText("latest daily run");
+    await expect(page.locator("#lab-lead")).not.toContainText("not a run on real machines");
+    // The closing line states the SIEM wiring is done, not a next step, and keeps the cluster link.
+    await expect(page.locator("#lab-next")).not.toContainText("Next step");
+    await expect(page.locator("#lab-next")).toContainText("come from its real rules");
+    await expect(page.locator('#lab-next a[href="/cluster/#correlation"]')).toHaveCount(1);
   });
 
   // No endpoint (the standalone image): the page falls back to the bundled synthetic sample, labelled
@@ -40,6 +48,10 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(page.locator(".lab-note")).toContainText("Synthetic sample");
     await expect(page.locator(".lab-table tbody tr")).not.toHaveCount(0);
     await expect(page.locator(".lab-meter")).toHaveCount(2);
+    // The hero keeps the static "design preview" wording on the sample fallback.
+    await expect(page.locator("#lab-eyebrow")).toContainText("design preview");
+    await expect(page.locator("#lab-lead")).toContainText("not a run on real machines");
+    await expect(page.locator("#lab-next")).toContainText("Next step");
   });
 
   test("loads where it starts, without a console error, inline style or policy violation; assets under /lab/", async ({ page }) => {
