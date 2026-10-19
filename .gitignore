@@ -18,6 +18,9 @@ __pycache__/
 *.pyc
 /out/
 
+# compiled lab canary (variant B): built reproducibly in CI / at VM provisioning, never committed
+vm/dist/
+
 # web app (web/): dependencies, build output and test artefacts
 web/node_modules/
 web/dist/
