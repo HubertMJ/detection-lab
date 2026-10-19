@@ -112,8 +112,9 @@ def _post_json(endpoint: str, path: str, ctx: ssl.SSLContext, body: dict) -> dic
 
 def _resolve_id_by_name(resp: dict, name: str, kind: str) -> str:
     """The single OpenSearch document whose `_source.name` equals `name`, else a
-    clear failure. The name is matched exactly (the search query only narrows the
-    candidates); a missing or ambiguous name is fatal rather than guessed."""
+    clear failure. All detectors/monitors are fetched and the name is matched exactly here
+    (OpenSearch does not match_phrase the keyword name field); a missing or
+    ambiguous name is fatal rather than guessed."""
     hits = ((resp.get("hits") or {}).get("hits")) or []
     matches = [h for h in hits
                if (h.get("_source") or {}).get("name") == name
@@ -128,14 +129,14 @@ def _resolve_id_by_name(resp: dict, name: str, kind: str) -> str:
 
 def discover_detector_id(endpoint: str, ctx: ssl.SSLContext, name: str) -> str:
     """Resolve the Security Analytics detector id for the detector named `name`."""
-    body = {"size": 100, "query": {"match_phrase": {"name": name}}}
+    body = {"size": 500, "query": {"match_all": {}}}
     resp = _post_json(endpoint, DETECTORS_SEARCH_PATH, ctx, body)
     return _resolve_id_by_name(resp, name, "detector")
 
 
 def discover_monitor_id(endpoint: str, ctx: ssl.SSLContext, name: str) -> str:
     """Resolve the Alerting monitor id for the monitor named `name`."""
-    body = {"size": 100, "query": {"match_phrase": {"name": name}}}
+    body = {"size": 500, "query": {"match_all": {}}}
     resp = _post_json(endpoint, MONITORS_SEARCH_PATH, ctx, body)
     return _resolve_id_by_name(resp, name, "monitor")
 

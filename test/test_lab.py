@@ -329,7 +329,7 @@ class RunDiscoveryTest(unittest.TestCase):
         self.assertEqual(calls[0]["path"], r.DETECTORS_SEARCH_PATH)
         self.assertEqual(calls[0]["headers"], {"Content-Type": "application/json"})
         sent = json.loads(calls[0]["body"])
-        self.assertEqual(sent["query"]["match_phrase"]["name"], "sdp-lab-rules")
+        self.assertEqual(sent["query"], {"match_all": {}})  # all fetched; _resolve_id_by_name filters by exact name
 
     def test_discover_monitor_builds_request_and_resolves_id(self):
         name = "sdp-git: lab-polymorphic-beacon"
@@ -344,7 +344,7 @@ class RunDiscoveryTest(unittest.TestCase):
         self.assertEqual(mon_id, "mon-123")
         self.assertEqual(calls[0]["path"], r.MONITORS_SEARCH_PATH)
         sent = json.loads(calls[0]["body"])
-        self.assertEqual(sent["query"]["match_phrase"]["name"], name)
+        self.assertEqual(sent["query"], {"match_all": {}})  # all fetched; _resolve_id_by_name filters by exact name
 
     def test_discover_fails_when_name_absent(self):
         resp = {"hits": {"hits": [{"_id": "x", "_source": {"name": "unrelated"}}]}}
