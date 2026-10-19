@@ -106,6 +106,46 @@ class GeneratorTest(unittest.TestCase):
         self.assertEqual(re.findall(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", blob), [])
 
 
+class TimelineTest(unittest.TestCase):
+    def test_span_matches_offsets_and_gap(self):
+        self.assertEqual(g.timeline_span_s(1), max(g.BEACON_OFFSETS))
+        self.assertEqual(g.timeline_span_s(4), 3 * g.GAP_S + max(g.BEACON_OFFSETS))
+
+    def test_same_host_copies_do_not_overlap(self):
+        # copy n and copy n+2 share a host; their beacon windows (max BEACON_OFFSETS
+        # long) must not overlap, or one host would beacon from two processes at once.
+        self.assertGreaterEqual(2 * g.GAP_S, max(g.BEACON_OFFSETS),
+                                "same-host copies would beacon at the same time")
+
+    def test_default_run_is_in_the_past_and_delays_nonnegative(self):
+        import tempfile
+        for copies in (1, 4):
+            before = datetime.datetime.now(datetime.timezone.utc)
+            with tempfile.TemporaryDirectory() as out:
+                g.main(["--out", out, "--copies", str(copies)])
+                with open(os.path.join(out, "events.ndjson"), encoding="utf-8") as fh:
+                    docs = [json.loads(line) for line in fh]
+                with open(os.path.join(out, "run.json"), encoding="utf-8") as fh:
+                    run_doc = json.load(fh)
+            after = datetime.datetime.now(datetime.timezone.utc)
+            ts = [v._parse(d["@timestamp"]) for d in docs]
+            # No event is dated after the moment the run was generated: a timeline
+            # that ends at `now` can never produce a future event.
+            self.assertLessEqual(max(ts), after,
+                                 f"copies={copies}: an event is in the future")
+            # And it ends at ~now (not spread minutes ahead), so the run is recent.
+            self.assertGreaterEqual(max(ts), before - datetime.timedelta(seconds=5),
+                                    f"copies={copies}: the run does not end near now")
+            # A detector running no earlier than the last event sees a non-negative
+            # delay (detection time - the copy's first event) for every copy.
+            detection = max(d["@timestamp"] for d in docs)
+            for variant in run_doc["variants"]:
+                first_ts = variant["events"][0]["@timestamp"]
+                self.assertGreaterEqual(
+                    v._delay_s(first_ts, detection), 0,
+                    f"copies={copies}: copy {variant['n']} has a negative delay")
+
+
 class ValidatorTest(unittest.TestCase):
     def _run_doc(self):
         return gen()[1]
@@ -113,16 +153,20 @@ class ValidatorTest(unittest.TestCase):
     def test_hash_catches_one_incident_at_two(self):
         run_doc = self._run_doc()
         # Hash fires only on copy 1; run-key on all; beacon monitor opens the
-        # incident at copy 2 (two distinct hashes to one beacon address).
+        # incident at copy 2 (two distinct hashes to one beacon address). Detection
+        # times are built relative to each copy's first event, so the delays hold
+        # whatever the copy spacing (g.GAP_S) is.
+        firsts = {x["n"]: v._parse(x["events"][0]["@timestamp"]) for x in run_doc["variants"]}
+        at = lambda n, off: g._ts(firsts[n], off)
         detections = [
-            {"rule": "ioc-update-helper-sha256", "variant": 1, "at": "2026-10-18T09:00:58Z"},
-            {"rule": "run-key-from-temp", "variant": 1, "at": "2026-10-18T09:01:03Z"},
-            {"rule": "run-key-from-temp", "variant": 2, "at": "2026-10-18T09:10:04Z"},
-            {"rule": "run-key-from-temp", "variant": 3, "at": "2026-10-18T09:19:02Z"},
-            {"rule": "run-key-from-temp", "variant": 4, "at": "2026-10-18T09:28:02Z"},
-            {"rule": "lab-beaconing", "variant": 2, "at": "2026-10-18T09:14:05Z"},
+            {"rule": "ioc-update-helper-sha256", "variant": 1, "at": at(1, 58)},
+            {"rule": "run-key-from-temp", "variant": 1, "at": at(1, 63)},
+            {"rule": "run-key-from-temp", "variant": 2, "at": at(2, 64)},
+            {"rule": "run-key-from-temp", "variant": 3, "at": at(3, 62)},
+            {"rule": "run-key-from-temp", "variant": 4, "at": at(4, 62)},
+            {"rule": "lab-beaconing", "variant": 2, "at": at(2, 305)},
         ]
-        incident = {"variant": 2, "at": "2026-10-18T09:11:00Z"}
+        incident = {"variant": 2, "at": at(2, 120)}
         final = v.validate(run_doc, {"detections": detections, "incident": incident})
 
         caught = [x["n"] for x in final["variants"] if x["caught_by_hash"]]
@@ -163,9 +207,15 @@ class SAParserTest(unittest.TestCase):
             raw_alerts = json.load(fh)
         return raw_findings, raw_alerts
 
+    # The saved responses were captured before the timeline was compressed, when
+    # copies were 540 s apart; reconstruct the run document at that spacing so the
+    # per-copy first events line up with the real events the findings matched.
+    CAPTURE_GAP_S = 540
+
     def _final(self):
-        _, run_doc = g.generate(4, ["ws1.lab.local", "ws2.lab.local"],
-                                "198.51.100.10", 8080, RAW_START, RAW_RUN_ID, "generated")
+        with mock.patch.object(g, "GAP_S", self.CAPTURE_GAP_S):
+            _, run_doc = g.generate(4, ["ws1.lab.local", "ws2.lab.local"],
+                                    "198.51.100.10", 8080, RAW_START, RAW_RUN_ID, "generated")
         raw_findings, raw_alerts = self._raw()
         findings = v.parse_sa(raw_findings, raw_alerts, run_doc)
         return run_doc, v.validate(run_doc, findings)
