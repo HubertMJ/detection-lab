@@ -44,6 +44,7 @@ check("ev1 name", e1["process.name"] == "update-helper")
 check("ev1 exe", e1["process.executable"] == "/tmp/update-helper")
 check("ev1 hash lowercased", e1["process.hash.sha256"] == "4850c01e9e5cdb54b604908952b56f246e661dbec01ed85c19e349ce1ba92f2e")
 check("ev1 parent", e1["process.parent.name"] == "bash")
+check("ev1 ppid", e1["process.parent.pid"] == 1000)
 check("ev1 no file.path", e1["file.path"] == nil)
 
 -- event 11: file-create (persistence)

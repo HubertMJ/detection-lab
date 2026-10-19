@@ -76,6 +76,8 @@ function M.map(ev, ctx)
     local sha = d.Hashes and d.Hashes:match("SHA256=([0-9A-Fa-f]+)")
     if sha then out["process.hash.sha256"] = sha:lower() end
     if d.ParentImage then out["process.parent.name"] = basename(d.ParentImage) end
+    local ppid = tonumber(d.ParentProcessId)
+    if ppid then out["process.parent.pid"] = ppid end
   elseif code == "11" then
     out["file.path"] = d.TargetFilename
   elseif code == "3" then

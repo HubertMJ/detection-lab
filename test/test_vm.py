@@ -13,6 +13,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "vm"))
 
 import run_scenario as rs  # noqa: E402
+import ship_marker as sm  # noqa: E402
 
 # A synthetic "base": some bytes, the magic, 32 zero marker bytes, more bytes. Enough for the
 # builder's byte-patching logic without compiling anything.
@@ -95,6 +96,28 @@ class BuilderTest(unittest.TestCase):
         copies = rs.build_variants(base, 4)
         self.assertEqual(copies[0]["sha256"], hashlib.sha256(base).hexdigest())
         self.assertEqual(len({c["sha256"] for c in copies}), 4)
+
+
+class MarkerTest(unittest.TestCase):
+    def test_marker_doc_shape_no_event_code(self):
+        d = sm.build_marker_doc("lab-20261019T030045Z-7f3a1c", "booted", 16,
+                                "2026-10-19T03:00:16.000Z")
+        self.assertEqual(d["event.action"], "lifecycle")
+        self.assertEqual(d["lab.marker"], "booted")
+        self.assertEqual(d["lab.offset_s"], 16)
+        self.assertEqual(d["lab.mode"], "isolated-vm")
+        self.assertEqual(d["host.name"], "lab-vm")
+        self.assertEqual(d["@timestamp"], "2026-10-19T03:00:16.000Z")
+        # No event.code, so no detector rule (which require event.code 1/3/11) can ever match it.
+        self.assertNotIn("event.code", d)
+
+    def test_all_markers_valid(self):
+        for mk in sm.MARKERS:
+            self.assertEqual(sm.build_marker_doc("r", mk, 0, "t")["lab.marker"], mk)
+
+    def test_unknown_marker_rejected(self):
+        with self.assertRaises(ValueError):
+            sm.build_marker_doc("r", "exploded", 0, "t")
 
 
 if __name__ == "__main__":

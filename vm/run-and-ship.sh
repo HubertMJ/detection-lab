@@ -25,8 +25,42 @@ GAP_S=${LAB_GAP_S:-15}
 NAMEMAP=${LAB_NAMEMAP:-/run/lab/namemap}
 FB_METRICS=${FB_METRICS:-http://127.0.0.1:2020/api/v1/metrics}
 DRAIN_TIMEOUT=${DRAIN_TIMEOUT:-300}
+PVE_MARKERS=${PVE_MARKERS:-/run/lab/pve-markers}   # rollback_epoch / start_epoch, written by the PVE timer
+SIEM_ENDPOINT=${SIEM_ENDPOINT:-https://10.4.2.10:9200}
+SIEM_CERT=${SIEM_CLIENT_CERT:-/etc/lab/siem/tls.crt}
+SIEM_KEY=${SIEM_CLIENT_KEY:-/etc/lab/siem/tls.key}
+SIEM_CA=${SIEM_CA_CERT:-/etc/lab/siem/ca.crt}
+RUN_ID=${LAB_RUN_ID:-lab-$(date -u +%Y%m%dT%H%M%SZ)-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')}
 
 log() { echo "run-and-ship: $*"; }
+
+# t0 = the rollback epoch (the run's zero). The PVE timer writes rollback_epoch/start_epoch into the
+# guest; without it (e.g. a manual boot) fall back to this boot's time, so offsets are still sane.
+if [ -r "$PVE_MARKERS" ]; then
+  . "$PVE_MARKERS"
+fi
+BOOT_EPOCH=$(date -d "$(uptime -s)" +%s 2>/dev/null || echo "$(date +%s)")
+T0=${rollback_epoch:-$BOOT_EPOCH}
+
+# Offset in seconds from t0 for an epoch (floored at 0).
+off() { o=$(( ${1:-$(date +%s)} - T0 )); [ "$o" -lt 0 ] && o=0; echo "$o"; }
+
+# The epoch a systemd unit last became active (0 if unknown).
+unit_epoch() {
+  ts=$(systemctl show -p ActiveEnterTimestamp --value "$1" 2>/dev/null || true)
+  [ -n "$ts" ] && date -d "$ts" +%s 2>/dev/null || echo 0
+}
+
+# Ship one lifecycle marker (best effort: a failed marker never aborts the run).
+mark() {
+  marker=$1 ; epoch=${2:-$(date +%s)}
+  iso=$(date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%S.000Z 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%S.000Z)
+  python3 /opt/lab/ship_marker.py --run-id "$RUN_ID" --marker "$marker" \
+    --offset-s "$(off "$epoch")" --timestamp "$iso" \
+    --endpoint "$SIEM_ENDPOINT" --stream sdp-lab \
+    --client-cert "$SIEM_CERT" --client-key "$SIEM_KEY" --cacert "$SIEM_CA" \
+    || log "marker $marker not shipped"
+}
 
 # Sum every output's proc_records (records handed to an output) from Fluent Bit's metrics: the
 # simplest "did it ship" signal. -1 if the endpoint is not answering yet.
@@ -59,14 +93,25 @@ drain() {
   log "drain timeout after ${waited}s (last count $last); powering off anyway"
 }
 
-log "starting scenario (sink ${SINK_IP}:${SINK_PORT})"
-python3 /opt/lab/run_scenario.py \
+# The run's early timeline: the PVE-side rollback/start (from the markers file, with their real
+# epochs), then this boot and the detection stack coming up. Shipped now, right after boot.
+[ -n "${rollback_epoch:-}" ] && mark rollback "$rollback_epoch"
+[ -n "${start_epoch:-}" ] && mark start "$start_epoch"
+mark booted "$BOOT_EPOCH"
+su_epoch=$(unit_epoch sysmon.service); [ "$su_epoch" -gt 0 ] && mark sysmon_up "$su_epoch"
+sh_epoch=$(unit_epoch fluent-bit.service); [ "$sh_epoch" -gt 0 ] && mark shipper_up "$sh_epoch"
+
+log "starting scenario (run ${RUN_ID}, sink ${SINK_IP}:${SINK_PORT})"
+mark run_start
+LAB_RUN_ID="$RUN_ID" python3 /opt/lab/run_scenario.py \
   --base "$BASE" --workdir /tmp \
   --sink-ip "$SINK_IP" --sink-port "$SINK_PORT" \
   --beacons "$BEACONS" --interval-ms "$INTERVAL_MS" --gap-s "$GAP_S" \
-  --namemap "$NAMEMAP"
+  --run-id "$RUN_ID" --namemap "$NAMEMAP"
 
 drain
+mark drained
+mark poweroff_requested
 
 if [ "${NO_POWEROFF:-0}" = "1" ]; then
   log "NO_POWEROFF set; not powering off"
