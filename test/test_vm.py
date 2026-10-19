@@ -82,11 +82,11 @@ class BuilderTest(unittest.TestCase):
             with open(path, encoding="utf-8") as fh:
                 lines = fh.read().splitlines()
         self.assertEqual(lines[0], "run_id lab-20261019T073610Z-abc123")
-        self.assertEqual(lines[1], f"{copies[0]['name']} 1")
+        self.assertEqual(lines[1], f"{copies[0]['name']} 1 {copies[0]['sha256']}")
         self.assertEqual(len(lines), 5)  # run_id + 4 copies
-        # every data line is "<name> <variant>"
+        # every data line is "<name> <variant> <sha256>"
         for ln in lines[1:]:
-            self.assertRegex(ln, r"^\S+ [1-4]$")
+            self.assertRegex(ln, r"^\S+ [1-4] [0-9a-f]{64}$")
 
     @unittest.skipUnless(os.path.exists(REAL), "compiled canary not built")
     def test_real_binary_has_exactly_one_marker_and_stable_copy1(self):
@@ -114,6 +114,15 @@ class MarkerTest(unittest.TestCase):
     def test_all_markers_valid(self):
         for mk in sm.MARKERS:
             self.assertEqual(sm.build_marker_doc("r", mk, 0, "t")["lab.marker"], mk)
+
+    def test_marker_shipped_nested(self):
+        d = sm.nest(sm.build_marker_doc("r", "booted", 16, "2026-10-19T03:00:16.000Z"))
+        self.assertEqual(d["@timestamp"], "2026-10-19T03:00:16.000Z")
+        self.assertEqual(d["lab"], {"run_id": "r", "mode": "isolated-vm", "marker": "booted",
+                                    "offset_s": 16})
+        self.assertEqual(d["event"]["action"], "lifecycle")
+        self.assertEqual(d["host"], {"name": "lab-vm"})
+        self.assertFalse([k for k in d if "." in k])
 
     def test_unknown_marker_rejected(self):
         with self.assertRaises(ValueError):

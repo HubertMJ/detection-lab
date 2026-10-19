@@ -43,6 +43,22 @@ def build_marker_doc(run_id: str, marker: str, offset_s: int, ts_iso: str) -> di
     }
 
 
+def nest(doc: dict) -> dict:
+    """Flat dotted keys -> nested objects, as the Lua mapper and variant A's indexer ship them
+    ("@timestamp" stays top level)."""
+    out: dict = {}
+    for key, value in doc.items():
+        if key == "@timestamp":
+            out[key] = value
+            continue
+        node = out
+        parts = key.split(".")
+        for part in parts[:-1]:
+            node = node.setdefault(part, {})
+        node[parts[-1]] = value
+    return out
+
+
 def _ssl_ctx(cert: str, key: str, cacert: str) -> ssl.SSLContext:
     ctx = ssl.create_default_context(cafile=cacert)
     ctx.load_cert_chain(cert, key)
@@ -55,7 +71,7 @@ def ship(endpoint: str, stream: str, doc: dict, cert: str, key: str, cacert: str
     conn = http.client.HTTPSConnection(u.hostname, u.port or 9200,
                                        context=_ssl_ctx(cert, key, cacert), timeout=15)
     try:
-        body = json.dumps(doc, separators=(",", ":")).encode("utf-8")
+        body = json.dumps(nest(doc), separators=(",", ":")).encode("utf-8")
         # create a fresh document (append-only, like Fluent Bit's Write_Operation create).
         conn.request("POST", f"/{stream}/_doc", body=body,
                      headers={"Content-Type": "application/json"})
