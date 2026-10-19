@@ -23,4 +23,9 @@ jobs:
           h2=$(cat vm/dist/lab-canary.sha256)
           test "$h1" = "$h2" || { echo "canary build is not reproducible: $h1 != $h2"; exit 1; }
           echo "copy-1 sha256 (this toolchain): $h1"
+      # The Fluent Bit Sysmon->sdp-lab Lua mapper, tested offline against real Sysmon XML fixtures.
+      - name: lua mapper tests
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lua5.1
+          lua5.1 vm/fluent-bit/test_mapper.lua
       - run: python3 -m unittest discover -s test -p 'test_*.py' -v

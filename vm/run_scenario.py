@@ -85,10 +85,13 @@ def _persistence_path(name: str) -> str:
 
 
 def run(base_path: str, workdir: str, sink_ip: str, sink_port: int, beacons: int,
-        interval_ms: int, gap_s: int, count: int, rid: str) -> dict:
+        interval_ms: int, gap_s: int, count: int, rid: str, namemap: str | None = None) -> dict:
     with open(base_path, "rb") as fh:
         base = fh.read()
     copies = build_variants(base, count)
+    # Write the name map BEFORE running anything, so Fluent Bit can tag the very first event.
+    if namemap:
+        write_namemap(namemap, rid, copies)
     os.makedirs(workdir, exist_ok=True)
     variants = []
     for i, c in enumerate(copies):
@@ -138,8 +141,23 @@ def parse_args(argv=None):
     p.add_argument("--copies", type=int, default=4)
     p.add_argument("--run-id", default=None)
     p.add_argument("--manifest", default="/run/lab/manifest.json",
-                   help="ground-truth manifest for Fluent Bit tagging and the validator")
+                   help="ground-truth manifest for the validator")
+    p.add_argument("--namemap", default="/run/lab/pidmap",
+                   help="run_id + name->variant lines Fluent Bit's mapper reads to tag and filter")
     return p.parse_args(argv)
+
+
+def write_namemap(path: str, rid: str, copies) -> None:
+    """The run id and one ``name variant`` line per copy, for the Fluent Bit Lua mapper (no JSON in
+    Lua). Keyed by the copy's file name (not pid) and written BEFORE the copies run, so no early
+    event (the exec itself, the file-create) is dropped for want of a pid that is not known yet.
+    Only these names' events are shipped, tagged with this run id and variant."""
+    lines = ["run_id " + rid]
+    for c in copies:
+        lines.append(f"{c['name']} {c['n']}")
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
 
 
 def main(argv=None):
@@ -148,7 +166,7 @@ def main(argv=None):
         raise SystemExit("--copies must be >= 1")
     rid = args.run_id or run_id(_now())
     doc = run(args.base, args.workdir, args.sink_ip, args.sink_port, args.beacons,
-              args.interval_ms, args.gap_s, args.copies, rid)
+              args.interval_ms, args.gap_s, args.copies, rid, namemap=args.namemap)
     os.makedirs(os.path.dirname(args.manifest) or ".", exist_ok=True)
     with open(args.manifest, "w", encoding="utf-8") as fh:
         json.dump(doc, fh, separators=(",", ":"), sort_keys=True)

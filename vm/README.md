@@ -50,7 +50,25 @@ run_scenario.py --base /opt/lab/lab-canary --workdir /tmp \
   --sink-ip <siem01> --sink-port 8080 --beacons 6 --interval-ms 20000 --gap-s 15
 ```
 
-It writes a ground-truth manifest (run id, and per copy the name, SHA-256, pid, start time and the
-persistence path). Fluent Bit uses the manifest to tag the shipped Sysmon events with the run id and
-variant; the siem01 validator lines the manifest up against the real findings to build the run
-document. The runner itself ships and detects nothing.
+It writes two things: a **name map** (`/run/lab/namemap`: the run id and one `name variant` line per
+copy, written *before* the copies run) and a **ground-truth manifest** (`/run/lab/manifest.json`:
+per copy the name, SHA-256, pid, start time and persistence path). The runner itself ships and
+detects nothing.
+
+## Shipping (`fluent-bit/`)
+
+Sysmon for Linux logs every event to the journal as Windows-Sysmon XML. `fluent-bit.conf` reads
+those from the journal; `sysmon_to_lab.lua` keeps only this run's canary events (matched by file
+name against the name map), maps events 1/3/11 to the exact sdp-lab shape variant A produces, masks
+`host.name` to `lab-vm` and the beacon destination to `lab beacon :<port>`, and the OpenSearch output
+ships them to siem01's `sdp-lab` stream over mTLS as the `lab-vm-shipper` identity. The mapper is
+tested offline against real Sysmon XML fixtures (`test_mapper.lua`). Because only matched events are
+shipped, none of the VM's other activity ever leaves the host.
+
+## The boot action (`run-and-ship.sh`)
+
+The VM's systemd oneshot at boot: run the scenario, wait for Fluent Bit to drain every event to
+siem01 (its loopback metrics, bounded by a timeout), then power off. The VM is reverted to a clean
+snapshot before each boot, so this is the whole life of a run. The siem01 validator (`lab/run.py`,
+isolated-vm mode) later lines the manifest up against the real findings and alerts to build the run
+document in `lab-runs`.
