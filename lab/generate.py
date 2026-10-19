@@ -46,6 +46,13 @@ COPY1_NAME = "update-helper.exe"
 # ~5-minute window, so the 5+/10-min beaconing logic is satisfiable.
 BEACON_OFFSETS = (5, 65, 125, 185, 245, 305)
 
+# Seconds between one copy's first event and the next copy's. Two copies share a
+# host (copy n and copy n+2), so GAP_S must leave two same-host copies apart by
+# 2*GAP_S > the per-copy span (max BEACON_OFFSETS), or their beacons would overlap
+# on one host. 180 keeps same-host copies 360 s apart (> 305 s span) while packing
+# the whole run into a recent window instead of spreading it over half an hour.
+GAP_S = 180
+
 SCENARIO = {
     "id": "C",
     "title": "A new hash and a new name for every copy",
@@ -87,6 +94,13 @@ def _ts(base: datetime.datetime, offset_s: float) -> str:
 
 def _run_id(now: datetime.datetime) -> str:
     return "lab-" + now.strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
+
+
+def timeline_span_s(count: int) -> int:
+    """Seconds from the first copy's first event to the last copy's last event:
+    (count-1) gaps plus one copy's own span. Used to anchor the default timeline so
+    it ends at generation time, never in the future."""
+    return max(0, count - 1) * GAP_S + max(BEACON_OFFSETS)
 
 
 def _random_name() -> str:
@@ -197,9 +211,8 @@ def generate(count, hosts, beacon_ip, beacon_port, start, run_id, mode):
     beacon_label = f"lab beacon :{beacon_port}"
     all_events = []
     variants = []
-    gap_s = 540
     for i, copy in enumerate(copies):
-        c_start = start + datetime.timedelta(seconds=i * gap_s)
+        c_start = start + datetime.timedelta(seconds=i * GAP_S)
         events = copy_events(copy, c_start, run_id, mode, beacon_ip, beacon_port)
         all_events.extend(events)
         variants.append(run_variant(copy, events, beacon_label))
@@ -267,7 +280,14 @@ def main(argv):
         if start.tzinfo is None:
             start = start.replace(tzinfo=datetime.timezone.utc)
     else:
-        start = now.replace(microsecond=0)
+        # Anchor the run to END at `now`, not start at it: the four copies are
+        # indexed moments after they are generated and the detector runs later
+        # still, so a timeline that began at `now` would leave later copies dated
+        # in the future and every finding/incident delay (detection time minus
+        # event time) negative. Starting span seconds in the past puts the last
+        # event at `now`, so all events are in the recent past and all delays >= 0.
+        start = now.replace(microsecond=0) - datetime.timedelta(
+            seconds=timeline_span_s(args.copies))
     run_id = args.run_id or _run_id(now)
     events, run_doc = generate(args.copies, hosts, args.beacon_ip, args.beacon_port,
                                start, run_id, args.mode)
