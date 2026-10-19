@@ -50,6 +50,14 @@ function heroLive(): void {
     strong,
     "? Shows the latest daily run: generated events indexed into siem01, where real detection rules and a monitor catch them.",
   );
+  // The closing "next step" line described wiring the page to the SIEM as future work. On a real run
+  // that step is done, so say so (keeping the link to the cluster's correlation view).
+  const next = byId("lab-next");
+  next.textContent = "These events go to the OpenSearch SIEM behind ";
+  const link = document.createElement("a");
+  link.href = "/cluster/#correlation";
+  link.textContent = "the self-defending cluster";
+  next.append(link, ": the findings above come from its real rules, not from this page.");
 }
 
 function start(): void {
