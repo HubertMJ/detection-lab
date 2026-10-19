@@ -148,13 +148,14 @@ def parse_args(argv=None):
 
 
 def write_namemap(path: str, rid: str, copies) -> None:
-    """The run id and one ``name variant`` line per copy, for the Fluent Bit Lua mapper (no JSON in
-    Lua). Keyed by the copy's file name (not pid) and written BEFORE the copies run, so no early
-    event (the exec itself, the file-create) is dropped for want of a pid that is not known yet.
-    Only these names' events are shipped, tagged with this run id and variant."""
+    """The run id and one ``name variant sha256`` line per copy, for the Fluent Bit Lua mapper (no
+    JSON in Lua). Keyed by the copy's file name (not pid) and written BEFORE the copies run, so no
+    early event (the exec itself, the file-create) is dropped for want of a pid that is not known
+    yet. Only these names' events are shipped, tagged with this run id and variant; the hash goes on
+    the network events, which Linux Sysmon logs without one."""
     lines = ["run_id " + rid]
     for c in copies:
-        lines.append(f"{c['name']} {c['n']}")
+        lines.append(f"{c['name']} {c['n']} {c['sha256']}")
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")

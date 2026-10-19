@@ -59,8 +59,9 @@ detects nothing.
 
 Sysmon for Linux logs every event to the journal as Windows-Sysmon XML. `fluent-bit.conf` reads
 those from the journal; `sysmon_to_lab.lua` keeps only this run's canary events (matched by file
-name against the name map), maps events 1/3/11 to the exact sdp-lab shape variant A produces, masks
-`host.name` to `lab-vm` and the beacon destination to `lab beacon :<port>`, and the OpenSearch output
+name against the name map), maps events 1/3/11 to the exact sdp-lab shape variant A produces
+(nested documents, the copy's SHA-256 on the network events too), masks `host.name` to `lab-vm` and
+the beacon destination to variant A's synthetic address `198.51.100.10`, and the OpenSearch output
 ships them to siem01's `sdp-lab` stream over mTLS as the `lab-vm-shipper` identity. The mapper is
 tested offline against real Sysmon XML fixtures (`test_mapper.lua`). Because only matched events are
 shipped, none of the VM's other activity ever leaves the host.
