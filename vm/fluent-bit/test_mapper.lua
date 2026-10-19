@@ -85,14 +85,16 @@ check("garbage dropped", M.map(M.parse_xml("not xml"), ctx) == nil)
 -- the name-map file parses into {run_id, names}
 local tmp = os.tmpname()
 local tf = io.open(tmp, "w")
-tf:write("run_id lab-20261019T073610Z-39090f\nupdate-helper 1 4850C01E9E5CDB54B604908952B56F246E661DBEC01ED85C19E349CE1BA92F2E\nsvc-2b3c5535 2\nsvc-edc22232 3 aa\n")
+tf:write("run_id lab-20261019T073610Z-39090f\nupdate-helper 1 4850C01E9E5CDB54B604908952B56F246E661DBEC01ED85C19E349CE1BA92F2E\nsvc-2b3c5535 2\nsvc-edc22232 3 aa\nsvc-0000 41deadbeef\n")
 tf:close()
 local loaded = M._load_ctx(tmp)
 os.remove(tmp)
 check("namemap run_id", loaded and loaded.run_id == "lab-20261019T073610Z-39090f")
 check("namemap names", loaded and loaded.names["update-helper"] == 1 and loaded.names["svc-edc22232"] == 3)
 check("namemap hashes (lowercased, optional)", loaded and loaded.hashes["update-helper"] == "4850c01e9e5cdb54b604908952b56f246e661dbec01ed85c19e349ce1ba92f2e"
-      and loaded.hashes["svc-2b3c5535"] == nil and loaded.hashes["svc-edc22232"] == "aa")
+      and loaded.hashes["svc-2b3c5535"] == nil)
+check("namemap short hash ignored, copy kept", loaded and loaded.names["svc-edc22232"] == 3 and loaded.hashes["svc-edc22232"] == nil)
+check("namemap variant glued to hash is not a hash", loaded and loaded.hashes["svc-0000"] == nil)
 check("namemap missing file -> nil", M._load_ctx("/nonexistent/namemap/xyz") == nil)
 
 if fails == 0 then print("\nALL OK") else print("\n" .. fails .. " FAILED"); os.exit(1) end

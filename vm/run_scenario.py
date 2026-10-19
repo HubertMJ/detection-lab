@@ -142,8 +142,8 @@ def parse_args(argv=None):
     p.add_argument("--run-id", default=None)
     p.add_argument("--manifest", default="/run/lab/manifest.json",
                    help="ground-truth manifest for the validator")
-    p.add_argument("--namemap", default="/run/lab/pidmap",
-                   help="run_id + name->variant lines Fluent Bit's mapper reads to tag and filter")
+    p.add_argument("--namemap", default="/run/lab/namemap",
+                   help="run_id + name->variant->sha256 lines Fluent Bit's mapper reads to tag and filter")
     return p.parse_args(argv)
 
 

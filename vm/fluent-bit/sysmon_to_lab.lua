@@ -138,10 +138,13 @@ local function load_ctx(path)
     if not ctx.run_id then
       ctx.run_id = line:match("^run_id%s+(%S+)")
     else
-      local name, variant, sha = line:match("^(%S+)%s+(%d+)%s*(%x*)$")
+      -- "name variant" or "name variant <64-hex sha256>"
+      local name, variant = line:match("^(%S+)%s+(%d+)%s*$")
+      local sha
+      if not name then name, variant, sha = line:match("^(%S+)%s+(%d+)%s+(%x+)%s*$") end
       if name then
         ctx.names[name] = tonumber(variant)
-        if sha ~= "" then ctx.hashes[name] = sha:lower() end
+        if sha and #sha == 64 then ctx.hashes[name] = sha:lower() end
       end
     end
   end

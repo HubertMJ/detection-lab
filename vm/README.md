@@ -50,7 +50,7 @@ run_scenario.py --base /opt/lab/lab-canary --workdir /tmp \
   --sink-ip <siem01> --sink-port 8080 --beacons 6 --interval-ms 20000 --gap-s 15
 ```
 
-It writes two things: a **name map** (`/run/lab/namemap`: the run id and one `name variant` line per
+It writes two things: a **name map** (`/run/lab/namemap`: the run id and one `name variant sha256` line per
 copy, written *before* the copies run) and a **ground-truth manifest** (`/run/lab/manifest.json`:
 per copy the name, SHA-256, pid, start time and persistence path). The runner itself ships and
 detects nothing.
