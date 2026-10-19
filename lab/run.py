@@ -155,7 +155,7 @@ def poll(endpoint: str, ctx: ssl.SSLContext, detector_id: str, monitor_id: str,
          run_id: str, timeout_s: int, interval_s: int) -> tuple[dict, dict]:
     """Poll findings and alerts until the detector and the monitor have both fired
     for this run, or the timeout elapses. Returns the raw responses."""
-    findings_path = f"{FINDINGS_PATH}?detectorId={detector_id}&size=10000"
+    findings_path = f"{FINDINGS_PATH}?detector_id={detector_id}&size=10000"
     alerts_path = f"{ALERTS_PATH}?monitorId={monitor_id}&size=200"
     deadline = time.monotonic() + timeout_s
     raw_findings: dict = {"findings": []}
