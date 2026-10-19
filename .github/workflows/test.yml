@@ -13,4 +13,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      # Build the variant B canary so test/test_vm.py checks the real binary (one marker slot,
+      # stable copy 1) and prove the build is reproducible (copy-1 hash must be pinnable).
+      - name: build lab canary (reproducible)
+        run: |
+          make -C vm
+          h1=$(cat vm/dist/lab-canary.sha256)
+          make -C vm clean && make -C vm >/dev/null
+          h2=$(cat vm/dist/lab-canary.sha256)
+          test "$h1" = "$h2" || { echo "canary build is not reproducible: $h1 != $h2"; exit 1; }
+          echo "copy-1 sha256 (this toolchain): $h1"
       - run: python3 -m unittest discover -s test -p 'test_*.py' -v
