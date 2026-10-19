@@ -35,6 +35,26 @@ export interface LabVariant {
   events: Record<string, string | number>[];
   ground_truth: { "@timestamp": string; host: string; techniques: string[]; variant_sha256: string };
   findings: LabFinding[];
+  /** Variant B (isolated-vm): the real pid/ppid Sysmon saw, and whether the hash rule caught this copy. */
+  pid?: number;
+  ppid?: number;
+  caught_by_hash?: boolean;
+}
+
+/** Variant B (isolated-vm): one stage of the VM's run, as a second offset from the rollback (t0). */
+export interface LabLifecycle {
+  marker: string;
+  offset_s: number;
+  label: string;
+}
+
+/** Variant B (isolated-vm): run-level counts for the "it really ran" header. */
+export interface LabCounters {
+  processes: number;
+  unique_hashes: number;
+  events: number;
+  findings: number;
+  incidents: number;
 }
 
 /** A real run's provenance: present when the page drew a run, absent on the synthetic sample. */
@@ -44,6 +64,8 @@ export interface LabRun {
   mode: "generated" | "isolated-vm";
   started_at: string;
   finished_at: string;
+  /** Variant B: wall-clock seconds the VM was up for this run (rollback to power-off). */
+  duration_s?: number;
 }
 
 export interface LabReplay {
@@ -57,6 +79,10 @@ export interface LabReplay {
   risk_threshold: number;
   rules: LabRule[];
   variants: LabVariant[];
+  /** Variant B (isolated-vm): the VM's run as a timeline, and run-level counts. Absent for variant A. */
+  lifecycle?: LabLifecycle[];
+  counters?: LabCounters;
+  incident?: { opened_at_variant: number | null; delay_s: number | null; key: string; at_offset_s?: number };
 }
 
 const isStr = (v: unknown): v is string => typeof v === "string" && v.length > 0;
