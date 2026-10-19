@@ -151,11 +151,19 @@ def _run_findings(raw_findings: dict, run_id: str) -> list:
     return out
 
 
-def poll(endpoint: str, ctx: ssl.SSLContext, detector_id: str, monitor_id: str,
+def poll(endpoint: str, ctx: ssl.SSLContext, monitor_id: str,
          run_id: str, timeout_s: int, interval_s: int) -> tuple[dict, dict]:
     """Poll findings and alerts until the detector and the monitor have both fired
-    for this run, or the timeout elapses. Returns the raw responses."""
-    findings_path = f"{FINDINGS_PATH}?detector_id={detector_id}&size=10000"
+    for this run, or the timeout elapses. Returns the raw responses.
+
+    The findings search carries no detector_id filter: that parameter makes
+    Security Analytics resolve the detector server-side, which needs the
+    cluster:admin/.../securityanalytics/detector/get action the lab-runner role
+    deliberately does not grant (same narrow read scope as sdp_lab_validator and
+    sdp_api_read). sdp-lab-rules is the only detector, and _run_findings already
+    keeps only this run's findings by run_id, so the unfiltered search is both
+    correct and sufficient."""
+    findings_path = f"{FINDINGS_PATH}?size=10000"
     alerts_path = f"{ALERTS_PATH}?monitorId={monitor_id}&size=200"
     deadline = time.monotonic() + timeout_s
     raw_findings: dict = {"findings": []}
@@ -281,8 +289,8 @@ def main(argv):
               f"monitor {args.monitor_name!r} -> {monitor_id}", flush=True)
 
         # 4. poll findings + alerts
-        raw_findings, raw_alerts = poll(args.endpoint, ctx, detector_id,
-                                        monitor_id, run_id, args.timeout_s,
+        raw_findings, raw_alerts = poll(args.endpoint, ctx, monitor_id,
+                                        run_id, args.timeout_s,
                                         args.poll_interval_s)
         print(f"detector and monitor fired: {len(_run_findings(raw_findings, run_id))} "
               f"finding(s), {len(raw_alerts.get('alerts', []))} alert(s)", flush=True)
