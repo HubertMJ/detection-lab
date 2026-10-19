@@ -60,6 +60,32 @@ function heroLive(): void {
   next.append(link, ": the findings above come from its real rules, not from this page.");
 }
 
+// A real (or sample) run on the isolated VM (variant B): the hook is the same, but the page is now
+// about a machine that ran, not a replay the visitor steps through, so retitle the hero and the
+// "Replay" section to match the panel ui/lab-vm.ts draws.
+function heroVm(real: boolean): void {
+  byId("lab-eyebrow").textContent = real ? "Detection lab · live · real machine" : "Detection lab · sample";
+  const lead = byId("lab-lead");
+  lead.textContent =
+    "A rule on a known hash catches one copy of a program. What catches the next three, when each has a new hash ";
+  const strong = document.createElement("strong");
+  strong.textContent = "and a new name";
+  lead.append(strong, real
+    ? "? This is the latest daily run on a real isolated VM: the Sysmon events it left, and what the SIEM made of them."
+    : "? Below is a sample of what a real isolated-VM run shows on this page — not a live run.");
+  byId("lab-replay-eyebrow").textContent = real ? "Real run" : "Sample run";
+  byId("lab-replay-lead").textContent =
+    "The machine was reverted to a clean snapshot, ran four copies — each with a new hash and a new name — then powered off. This is what it really left behind.";
+  if (real) {
+    const next = byId("lab-next");
+    next.textContent = "These events come from a real isolated VM, shipped to the OpenSearch SIEM behind ";
+    const link = document.createElement("a");
+    link.href = "/cluster/#correlation";
+    link.textContent = "the self-defending cluster";
+    next.append(link, ", where real rules catch them.");
+  }
+}
+
 function start(): void {
   const panel = byId("lab-panel");
   // Draw the bundled synthetic sample immediately: first paint never waits on the API.
@@ -70,7 +96,8 @@ function start(): void {
     void fetchLatest().then((data) => {
       if (!isLabReplay(data)) return;
       mountLab(panel, data);
-      if (!data.sample) heroLive();
+      if (data.run?.mode === "isolated-vm") heroVm(!data.sample);
+      else if (!data.sample) heroLive();
     });
   };
   if (document.readyState === "complete") upgrade();

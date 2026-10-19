@@ -51,9 +51,9 @@
   <section class="section" id="replay" aria-labelledby="replay-title" data-group="landing">
     <div class="wrap">
       <header class="section__head">
-        <p class="eyebrow">Replay</p>
+        <p class="eyebrow" id="lab-replay-eyebrow">Replay</p>
         <h2 id="replay-title">Four copies, one incident?</h2>
-        <p class="section__lead">Pick how many copies have run. By default every copy is renamed, as an attacker would do; tick “Keep one name for every copy” for the easier case.</p>
+        <p class="section__lead" id="lab-replay-lead">Pick how many copies have run. By default every copy is renamed, as an attacker would do; tick “Keep one name for every copy” for the easier case.</p>
       </header>
       <div id="lab-panel">
         <p class="small">One harmless test program is rebuilt and renamed four times, so every copy has a new SHA-256 and a new name. A rule on the known hash catches only the first copy, and scoring risk per name never adds up; rules on what the program does, scored per the address every copy calls, catch all four as one incident. With JavaScript this panel replays it copy by copy.</p>

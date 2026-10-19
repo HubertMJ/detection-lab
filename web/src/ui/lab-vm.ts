@@ -57,6 +57,17 @@ function ev(v: LabVariant, code: string): Record<string, string | number> | unde
   return v.events.find((e) => e["event.code"] === code);
 }
 
+/** The source of the lab canary (variant B), on the repository's reproducible-build section. */
+const CANARY_SRC = "https://github.com/HubertMJ/detection-lab/blob/main/vm/README.md#reproducible-build";
+
+function rawEvents(v: LabVariant): HTMLElement {
+  const pre = h("pre", { class: "lab-vm-raw__pre mono" });
+  pre.textContent = JSON.stringify(v.events, null, 2);
+  return h("details", { class: "lab-vm-raw" },
+    h("summary", {}, `Raw Sysmon — ${v.events.length} event${v.events.length === 1 ? "" : "s"} as indexed in sdp-lab`),
+    pre);
+}
+
 function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
   const create = ev(v, "1");
   const file = ev(v, "11");
@@ -68,12 +79,17 @@ function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
     h("div", { class: "lab-vm-ev" }, h("span", { class: "lab-vm-ev__k" }, k),
       h("span", { class: mono ? "lab-vm-ev__v mono" : "lab-vm-ev__v" }, String(val)));
   const chip = (cls: string, text: string) => h("span", { class: `lab-vm-chip ${cls}` }, text);
+  // Copy 1's hash is the one the known-hash rule pins; link it to the reproducible build.
+  const shaVal: (string | HTMLElement)[] = v.n === 1
+    ? [h("a", { href: CANARY_SRC, title: v.sha256 }, shortHash(v.sha256))]
+    : [h("span", { title: v.sha256 }, shortHash(v.sha256))];
   return h("article", { class: "lab-vm-copy" },
     h("header", { class: "lab-vm-copy__h" },
       h("span", { class: "lab-vm-copy__n mono" }, v.renamed),
       h("span", { class: "lab-vm-copy__c" }, `copy ${v.n}`)),
     h("div", { class: "lab-vm-copy__b" },
-      kv("sha-256", shortHash(v.sha256)),
+      h("div", { class: "lab-vm-ev" }, h("span", { class: "lab-vm-ev__k" }, "sha-256"),
+        h("span", { class: "lab-vm-ev__v mono" }, shaVal)),
       create ? kv("pid / ppid", `${v.pid ?? create["process.pid"]} / ${v.ppid ?? ""}`) : null,
       create ? kv("exec", String(create["process.executable"])) : null,
       file ? kv("persistence", String(file["file.path"])) : null,
@@ -81,7 +97,8 @@ function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
     h("div", { class: "lab-vm-chips" },
       chip(v.caught_by_hash ? "hit" : "miss", v.caught_by_hash ? "✓ known-hash" : "known-hash"),
       firedPersist ? chip("hit", "✓ persistence from /tmp") : null,
-      firedBeacon ? chip(incidentHere ? "crit" : "hit", incidentHere ? "✓ beaconing → incident" : "✓ beaconing") : null));
+      firedBeacon ? chip(incidentHere ? "crit" : "hit", incidentHere ? "✓ beaconing → incident" : "✓ beaconing") : null),
+    rawEvents(v));
 }
 
 function copies(d: LabReplay): HTMLElement {
