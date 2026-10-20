@@ -50,6 +50,9 @@ const result = await esbuild.build({
   target: ["es2022", "chrome110", "firefox110", "safari16"],
   metafile: true,
   legalComments: "none",
+  // ASCII mode's font (src/ascii/fonts), emitted beside the CSS with a content hash like the rest.
+  loader: { ".woff2": "file" },
+  assetNames: "[name]-[hash]",
   logLevel: "warning",
   plugins: [trafficPlugin],
 });
