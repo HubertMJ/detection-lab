@@ -13,6 +13,7 @@
 #   LAB_NAMEMAP   name map Fluent Bit reads             default /run/lab/namemap
 #   FB_METRICS    Fluent Bit metrics URL                default http://127.0.0.1:2020/api/v1/metrics
 #   DRAIN_TIMEOUT max seconds to wait for the ship       default 300
+#   PVE_MARKERS_WAIT_S max seconds to wait for the PVE timer's markers   default 90
 #   NO_POWEROFF   set to 1 to skip poweroff (testing)
 set -eu
 
@@ -35,7 +36,14 @@ RUN_ID=${LAB_RUN_ID:-lab-$(date -u +%Y%m%dT%H%M%SZ)-$(od -An -N3 -tx1 /dev/urand
 log() { echo "run-and-ship: $*"; }
 
 # t0 = the rollback epoch (the run's zero). The PVE timer writes rollback_epoch/start_epoch into the
-# guest; without it (e.g. a manual boot) fall back to this boot's time, so offsets are still sane.
+# guest through the agent once it answers, which can be after this unit started (seen on a cold
+# 03:00 boot: the run shipped without rollback/start), so wait for them, bounded. Without them (e.g.
+# a manual boot) fall back to this boot's time, so offsets are still sane.
+PVE_MARKERS_WAIT_S=${PVE_MARKERS_WAIT_S:-90}
+waited=0
+while [ ! -r "$PVE_MARKERS" ] && [ "$waited" -lt "$PVE_MARKERS_WAIT_S" ]; do
+  sleep 2 ; waited=$((waited + 2))
+done
 if [ -r "$PVE_MARKERS" ]; then
   . "$PVE_MARKERS"
 fi

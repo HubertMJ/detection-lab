@@ -1,0 +1,341 @@
+{
+ "alerts": [
+  {
+   "id": "fDjaUqEBdQ4h7L6QorZO",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-19T06:30:22.540594873_37211c07-11f9-4e8e-8cf0-c21e00356d38",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "COMPLETED",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792391422542,
+   "last_notification_time": 1792391422542,
+   "end_time": 1792395082543,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 7,
+     "hashes": {
+      "value": 2
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  },
+  {
+   "id": "wDgXU6EBdQ4h7L6QD94S",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-19T07:36:22.543989024_e8729e65-be39-43d1-877c-a2e9b538c021",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "COMPLETED",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792395382545,
+   "last_notification_time": 1792395382545,
+   "end_time": 1792395622543,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 5,
+     "hashes": {
+      "value": 2
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  },
+  {
+   "id": "FjgfU6EBdQ4h7L6QTORt",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-19T07:45:22.538913441_08eed169-e7ce-4df5-b771-4ad678148959",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "COMPLETED",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792395922541,
+   "last_notification_time": 1792395922541,
+   "end_time": 1792397662543,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 7,
+     "hashes": {
+      "value": 2
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  },
+  {
+   "id": "pjlnU6EBdQ4h7L6QoBIP",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-19T09:04:22.541080791_d00ca6b4-e04e-47c6-b862-cac6849cb115",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "COMPLETED",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792400662543,
+   "last_notification_time": 1792400662543,
+   "end_time": 1792402042543,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 5,
+     "hashes": {
+      "value": 2
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  },
+  {
+   "id": "STqWVaEBdQ4h7L6QGIfR",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-19T19:14:22.543253100_74d0f5fd-dd5c-4e84-beb8-b6c2df6b712a",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "COMPLETED",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792437262545,
+   "last_notification_time": 1792437262545,
+   "end_time": 1792438222547,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 12,
+     "hashes": {
+      "value": 4
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  },
+  {
+   "id": "pzvxVqEBdQ4h7L6QFGDw",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-20T01:33:22.542365766_87379e60-03a0-457c-b808-eda46731d426",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "COMPLETED",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792460002544,
+   "last_notification_time": 1792460002544,
+   "end_time": 1792461382546,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 5,
+     "hashes": {
+      "value": 2
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  },
+  {
+   "id": "ijtCV6EBdQ4h7L6QkZQB",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-20T03:02:22.718288649_6291f6ed-0119-4f6b-8939-e0c8d8010dfd",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "COMPLETED",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792465342720,
+   "last_notification_time": 1792465342720,
+   "end_time": 1792466302567,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 12,
+     "hashes": {
+      "value": 4
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  },
+  {
+   "id": "sjwaWKEBdQ4h7L6QoB3X",
+   "version": 1,
+   "monitor_id": "2jiqUqEBdQ4h7L6QHJZm",
+   "workflow_id": "",
+   "workflow_name": "",
+   "associated_alert_ids": [],
+   "schema_version": 6,
+   "monitor_version": 1,
+   "monitor_name": "sdp-git: lab-polymorphic-beacon",
+   "execution_id": "2jiqUqEBdQ4h7L6QHJZm_2026-10-20T06:58:22.547300616_8431b3fb-82a7-464a-819a-f255a6d566f5",
+   "trigger_id": "2TiqUqEBdQ4h7L6QHJZk",
+   "trigger_name": "one beacon address, two or more distinct binaries",
+   "finding_ids": [],
+   "related_doc_ids": [],
+   "state": "ACTIVE",
+   "error_message": null,
+   "alert_history": [],
+   "severity": "2",
+   "action_execution_results": [],
+   "start_time": 1792479502551,
+   "last_notification_time": 1792479502551,
+   "end_time": null,
+   "acknowledged_time": null,
+   "agg_alert_content": {
+    "parent_bucket_path": "composite_agg",
+    "bucket_keys": [
+     "198.51.100.10",
+     "8080"
+    ],
+    "bucket": {
+     "doc_count": 13,
+     "hashes": {
+      "value": 4
+     },
+     "key": {
+      "beacon_ip": "198.51.100.10",
+      "beacon_port": 8080
+     }
+    }
+   }
+  }
+ ],
+ "totalAlerts": 8
+}

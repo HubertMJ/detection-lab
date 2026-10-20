@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive one real detection-lab run end to end (variant A).
+"""Drive one real detection-lab run end to end (variant A), or validate a real VM run (B).
 
 This is the entrypoint the cluster CronJob invokes (the lab-runner image's
 `python3 /app/lab/run.py`, with no arguments). It chains the whole run:
@@ -46,6 +46,15 @@ polling and publishing alike. It exits non-zero on any failure, and re-running
 it is idempotent-ish (a fresh run_id each time unless one is pinned; the latest
 run document wins by run.finished_at). Standard library only, so the container
 image stays tiny.
+
+Variant B (--mode isolated-vm, the validator timer on siem01 as lab-validator):
+no generate/index. The run already happened on the isolated VM and its events
+are in sdp-lab, so this resolves the run (--run-id, default the newest
+isolated-vm run), waits until the VM has powered off and the detector and the
+monitor have fired (bounded by --timeout-s; a partial run is still published),
+rebuilds the run document with vm_validate.py and publishes it under its run id
+(re-validating a run replaces its document). --dry-run writes it to stdout or
+--out instead.
 """
 
 from __future__ import annotations
@@ -63,6 +72,7 @@ from urllib.parse import urlsplit
 import generate
 import indexer
 import validate
+import vm_validate
 
 # OpenSearch plugin API paths are protocol constants, not configuration.
 FINDINGS_PATH = "/_plugins/_security_analytics/findings/_search"
@@ -183,9 +193,11 @@ def poll(endpoint: str, ctx: ssl.SSLContext, monitor_id: str,
 
 
 def publish_run_doc(endpoint: str, index: str, run_doc: dict,
-                    ctx: ssl.SSLContext) -> None:
-    """Index the final run document into the lab-runs index (one document)."""
-    body = (json.dumps({"index": {"_index": index}}, separators=(",", ":")) + "\n"
+                    ctx: ssl.SSLContext, doc_id: str | None = None) -> None:
+    """Index the final run document into the lab-runs index (one document). With doc_id the
+    document replaces an earlier one of the same run (variant B re-validation)."""
+    action = {"_index": index, **({"_id": doc_id} if doc_id else {})}
+    body = (json.dumps({"index": action}, separators=(",", ":")) + "\n"
             + json.dumps(run_doc, separators=(",", ":")) + "\n").encode("utf-8")
     status, payload = https("POST", endpoint, "/_bulk", ctx, body=body,
                             headers={"Content-Type": "application/x-ndjson"})
@@ -220,7 +232,11 @@ def parse_args(argv):
     _env_arg(p, "--monitor-name", "LAB_MONITOR_NAME", default="sdp-git: lab-polymorphic-beacon",
              help="Alerting monitor to resolve by name", required=False)
     p.add_argument("--mode", default=os.environ.get("LAB_MODE", "generated"),
-                   choices=["generated"], help="run mode (env LAB_MODE)")
+                   choices=["generated", "isolated-vm"], help="run mode (env LAB_MODE)")
+    # Variant B only (CLI flags, not env: the CronJob's env contract stays frozen).
+    p.add_argument("--dry-run", action="store_true",
+                   help="isolated-vm: write the run document to --out or stdout, publish nothing")
+    p.add_argument("--out", default=None, help="isolated-vm --dry-run: file for the run document")
     # Generation parameters (match generate.py; not endpoints or secrets).
     p.add_argument("--copies", type=int, default=4)
     p.add_argument("--hosts", default="ws1.lab.local,ws2.lab.local")
@@ -241,9 +257,81 @@ def _require(args, names: list[str]) -> None:
                          + ", ".join("--" + n for n in missing))
 
 
+def latest_vm_run_id(endpoint: str, ctx: ssl.SSLContext, stream: str) -> str:
+    """The newest isolated-VM run in the stream (by its latest document)."""
+    resp = _post_json(endpoint, f"/{stream}/_search", ctx, {
+        "size": 1, "query": {"term": {"lab.mode": "isolated-vm"}},
+        "sort": [{"@timestamp": "desc"}], "_source": ["lab.run_id"]})
+    hits = resp.get("hits", {}).get("hits", [])
+    rid = hits and vm_validate.flatten(hits[0].get("_source", {})).get("lab.run_id")
+    if not rid:
+        raise SystemExit(f"no isolated-vm run in {stream}")
+    return rid
+
+
+def vm_run_docs(endpoint: str, ctx: ssl.SSLContext, stream: str, run_id: str) -> list[dict]:
+    """Every sdp-lab document of one run (events and lifecycle markers), oldest first."""
+    resp = _post_json(endpoint, f"/{stream}/_search", ctx, {
+        "size": 1000, "query": {"term": {"lab.run_id": run_id}}, "sort": [{"@timestamp": "asc"}]})
+    return [h["_source"] for h in resp.get("hits", {}).get("hits", [])]
+
+
+def _run_window_alerts(raw_alerts: dict, run_doc: dict, slack_s: int = 900) -> dict:
+    """The monitor's alerts that started during this run (rollback .. power-off + the monitor's
+    15-minute window), so an earlier run's alert is never credited to this one."""
+    t0 = validate._parse(run_doc["run"]["started_at"]).timestamp() * 1000
+    t1 = (validate._parse(run_doc["run"]["finished_at"]).timestamp() + slack_s) * 1000
+    return {"alerts": [a for a in raw_alerts.get("alerts", [])
+                       if t0 <= a.get("start_time", 0) <= t1]}
+
+
+def main_vm(args, ctx: ssl.SSLContext) -> int:
+    """Variant B: validate a run the isolated VM already made (see the module docstring)."""
+    run_id = args.run_id or latest_vm_run_id(args.endpoint, ctx, args.stream)
+    monitor_id = discover_monitor_id(args.endpoint, ctx, args.monitor_name)
+    findings_path = f"{FINDINGS_PATH}?size=10000"
+    alerts_path = f"{ALERTS_PATH}?monitorId={monitor_id}&size=200"
+    deadline = time.monotonic() + args.timeout_s
+    while True:
+        docs = vm_run_docs(args.endpoint, ctx, args.stream, run_id)
+        markers, _ = vm_validate.split_docs(docs)
+        run_doc = vm_validate.build_run_doc(run_id, docs, args.beacon_port)
+        raw_findings = _get_json(args.endpoint, findings_path, ctx)
+        raw_alerts = _run_window_alerts(_get_json(args.endpoint, alerts_path, ctx), run_doc)
+        done = ("poweroff_requested" in markers and bool(_run_findings(raw_findings, run_id))
+                and bool(raw_alerts["alerts"]))
+        if done:
+            break
+        if time.monotonic() >= deadline:
+            print(f"run {run_id}: timed out after {args.timeout_s}s (powered off="
+                  f"{'poweroff_requested' in markers}, findings={bool(_run_findings(raw_findings, run_id))}, "
+                  f"alert={bool(raw_alerts['alerts'])}); publishing what siem01 holds", flush=True)
+            break
+        time.sleep(args.poll_interval_s)
+    final = vm_validate.finish(run_doc, raw_findings, raw_alerts)
+    caught = sum(1 for v in final["variants"] if v["caught_by_hash"])
+    summary = (f"run {run_id}: {final['counters']['events']} events, {final['counters']['findings']} "
+               f"finding(s), hash caught {caught}/{len(final['variants'])}; "
+               f"incident at variant {final['incident']['opened_at_variant']}")
+    if args.dry_run:
+        out = json.dumps(final, indent=2)
+        if args.out:
+            with open(args.out, "w", encoding="utf-8") as fh:
+                fh.write(out + "\n")
+        else:
+            print(out)
+        print(summary + " (dry run, not published)", file=sys.stderr, flush=True)
+        return 0
+    publish_run_doc(args.endpoint, args.runs_index, final, ctx, doc_id=run_id)
+    print(f"published {summary}", flush=True)
+    return 0
+
+
 def main(argv):
     args = parse_args(argv)
     _require(args, ["endpoint", "client-cert", "client-key", "cacert"])
+    if args.mode == "isolated-vm":
+        return main_vm(args, _ssl_context(args.client_cert, args.client_key, args.cacert))
     if args.copies < 1:
         raise SystemExit("--copies must be >= 1")
     hosts = [h.strip() for h in args.hosts.split(",") if h.strip()]
