@@ -237,6 +237,9 @@ def parse_args(argv):
     p.add_argument("--dry-run", action="store_true",
                    help="isolated-vm: write the run document to --out or stdout, publish nothing")
     p.add_argument("--out", default=None, help="isolated-vm --dry-run: file for the run document")
+    p.add_argument("--skip-settled", action="store_true",
+                   help="isolated-vm: do nothing when the run's published document is complete (or "
+                        "the run ended over 2 h ago), so a frequent timer validates each run once")
     # Generation parameters (match generate.py; not endpoints or secrets).
     p.add_argument("--copies", type=int, default=4)
     p.add_argument("--hosts", default="ws1.lab.local,ws2.lab.local")
@@ -302,9 +305,36 @@ def vm_findings_path(run_doc: dict, slack_s: int = 900) -> str:
             "&size=1000&sortOrder=desc")
 
 
+def published_run(endpoint: str, ctx: ssl.SSLContext, index: str, run_id: str) -> dict | None:
+    """The run document already in lab-runs under this run id, or None."""
+    status, payload = https("GET", endpoint, f"/{index}/_doc/{run_id}", ctx)
+    if status == 404:
+        return None
+    if status >= 300:
+        raise SystemExit(f"reading {index}/{run_id}: HTTP {status}")
+    return json.loads(payload).get("_source")
+
+
+def settled(doc: dict | None, now: datetime.datetime, give_up_s: int = 7200) -> bool:
+    """True when re-validating would change nothing: the published document is complete, or the
+    run finished so long ago (2 h) that a missing finding or alert is not coming any more."""
+    if not doc:
+        return False
+    run = doc.get("run", {})
+    if run.get("complete"):
+        return True
+    finished = run.get("finished_at")
+    return bool(finished) and (now - validate._parse(finished)).total_seconds() > give_up_s
+
+
 def main_vm(args, ctx: ssl.SSLContext) -> int:
     """Variant B: validate a run the isolated VM already made (see the module docstring)."""
     run_id = args.run_id or latest_vm_run_id(args.endpoint, ctx, args.stream)
+    if args.skip_settled and not args.dry_run and settled(
+            published_run(args.endpoint, ctx, args.runs_index, run_id),
+            datetime.datetime.now(datetime.timezone.utc)):
+        print(f"run {run_id}: already published and settled; nothing to do", flush=True)
+        return 0
     monitor_id = discover_monitor_id(args.endpoint, ctx, args.monitor_name)
     # Newest first and bounded: the monitor's alerts accumulate over the days.
     alerts_path = f"{ALERTS_PATH}?monitorId={monitor_id}&size=200&sortString=start_time&sortOrder=desc"

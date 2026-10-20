@@ -142,6 +142,37 @@ class PinnedHashTest(unittest.TestCase):
         self.assertNotIn("size=10000", path)
 
 
+class SettledTest(unittest.TestCase):
+    NOW = validate._parse("2026-10-20T08:00:00Z")
+
+    def test_complete_document_is_settled(self):
+        self.assertTrue(run.settled({"run": {"complete": True, "finished_at": "2026-10-20T07:59:00Z"}}, self.NOW))
+
+    def test_incomplete_recent_run_is_revalidated(self):
+        self.assertFalse(run.settled({"run": {"complete": False, "finished_at": "2026-10-20T07:30:00Z"}}, self.NOW))
+
+    def test_incomplete_old_run_is_given_up(self):
+        self.assertTrue(run.settled({"run": {"complete": False, "finished_at": "2026-10-20T05:30:00Z"}}, self.NOW))
+
+    def test_unpublished_run_is_not_settled(self):
+        self.assertFalse(run.settled(None, self.NOW))
+
+    def test_published_run_reads_the_doc_by_id(self):
+        calls = []
+
+        def fake_https(method, endpoint, path, ctx, body=None, headers=None):
+            calls.append((method, path))
+            return (404, b"{}") if "missing" in path else (200, b'{"_source":{"run":{"complete":true}}}')
+        orig = run.https
+        run.https = fake_https
+        try:
+            self.assertIsNone(run.published_run("https://x:9200", None, "lab-runs", "missing"))
+            self.assertEqual(run.published_run("https://x:9200", None, "lab-runs", RUN_ID), {"run": {"complete": True}})
+        finally:
+            run.https = orig
+        self.assertEqual(calls[1], ("GET", f"/lab-runs/_doc/{RUN_ID}"))
+
+
 class PublishTest(unittest.TestCase):
     def test_bulk_action_carries_the_run_id(self):
         sent = {}
