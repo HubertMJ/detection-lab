@@ -258,15 +258,18 @@ def _require(args, names: list[str]) -> None:
 
 
 def latest_vm_run_id(endpoint: str, ctx: ssl.SSLContext, stream: str) -> str:
-    """The newest isolated-VM run in the stream (by its latest document)."""
-    resp = _post_json(endpoint, f"/{stream}/_search", ctx, {
-        "size": 1, "query": {"term": {"lab.mode": "isolated-vm"}},
-        "sort": [{"@timestamp": "desc"}], "_source": ["lab.run_id"]})
-    hits = resp.get("hits", {}).get("hits", [])
-    rid = hits and vm_validate.flatten(hits[0].get("_source", {})).get("lab.run_id")
-    if not rid:
-        raise SystemExit(f"no isolated-vm run in {stream}")
-    return rid
+    """The newest isolated-VM run that has powered off (so a run still in flight never displaces the
+    one before it); without any, the newest isolated-VM run at all."""
+    for marker in ({"term": {"lab.marker": "poweroff_requested"}}, None):
+        filters = [{"term": {"lab.mode": "isolated-vm"}}] + ([marker] if marker else [])
+        resp = _post_json(endpoint, f"/{stream}/_search", ctx, {
+            "size": 1, "query": {"bool": {"filter": filters}},
+            "sort": [{"@timestamp": "desc"}], "_source": ["lab.run_id"]})
+        hits = resp.get("hits", {}).get("hits", [])
+        rid = hits and vm_validate.flatten(hits[0].get("_source", {})).get("lab.run_id")
+        if rid:
+            return rid
+    raise SystemExit(f"no isolated-vm run in {stream}")
 
 
 def vm_run_docs(endpoint: str, ctx: ssl.SSLContext, stream: str, run_id: str) -> list[dict]:
@@ -278,36 +281,67 @@ def vm_run_docs(endpoint: str, ctx: ssl.SSLContext, stream: str, run_id: str) ->
 
 def _run_window_alerts(raw_alerts: dict, run_doc: dict, slack_s: int = 900) -> dict:
     """The monitor's alerts that started during this run (rollback .. power-off + the monitor's
-    15-minute window), so an earlier run's alert is never credited to this one."""
+    15-minute window), so an earlier run's alert is never credited to this one.
+
+    Variants A and B beacon to the same synthetic address, i.e. one bucket of the monitor. Their
+    daily runs are scheduled apart (B 03:00 UTC, ~4 min; A 03:30 UTC), so neither falls inside the
+    other's window nor finds the other's alert still active. A manual B run within ~15 min of an A
+    run can share A's alert; it then gets no incident here rather than A's."""
     t0 = validate._parse(run_doc["run"]["started_at"]).timestamp() * 1000
     t1 = (validate._parse(run_doc["run"]["finished_at"]).timestamp() + slack_s) * 1000
     return {"alerts": [a for a in raw_alerts.get("alerts", [])
                        if t0 <= a.get("start_time", 0) <= t1]}
 
 
+def vm_findings_path(run_doc: dict, slack_s: int = 900) -> str:
+    """The lab detector's findings during this run only (detectorType + time range), not every
+    finding siem01 holds."""
+    t0 = int(validate._parse(run_doc["run"]["started_at"]).timestamp() * 1000)
+    t1 = int((validate._parse(run_doc["run"]["finished_at"]).timestamp() + slack_s) * 1000)
+    return (f"{FINDINGS_PATH}?detectorType=sdp_lab&startTime={t0}&endTime={t1}"
+            "&size=1000&sortOrder=desc")
+
+
 def main_vm(args, ctx: ssl.SSLContext) -> int:
     """Variant B: validate a run the isolated VM already made (see the module docstring)."""
     run_id = args.run_id or latest_vm_run_id(args.endpoint, ctx, args.stream)
     monitor_id = discover_monitor_id(args.endpoint, ctx, args.monitor_name)
-    findings_path = f"{FINDINGS_PATH}?size=10000"
-    alerts_path = f"{ALERTS_PATH}?monitorId={monitor_id}&size=200"
+    # Newest first and bounded: the monitor's alerts accumulate over the days.
+    alerts_path = f"{ALERTS_PATH}?monitorId={monitor_id}&size=200&sortString=start_time&sortOrder=desc"
     deadline = time.monotonic() + args.timeout_s
+    stable, last_count = 0, -1
     while True:
         docs = vm_run_docs(args.endpoint, ctx, args.stream, run_id)
         markers, _ = vm_validate.split_docs(docs)
-        run_doc = vm_validate.build_run_doc(run_id, docs, args.beacon_port)
-        raw_findings = _get_json(args.endpoint, findings_path, ctx)
+        try:
+            run_doc = vm_validate.build_run_doc(run_id, docs, args.beacon_port)
+        except SystemExit:
+            # Only markers so far (the VM is still booting): keep waiting, refuse at the deadline.
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(args.poll_interval_s)
+            continue
+        raw_findings = _get_json(args.endpoint, vm_findings_path(run_doc), ctx)
         raw_alerts = _run_window_alerts(_get_json(args.endpoint, alerts_path, ctx), run_doc)
-        done = ("poweroff_requested" in markers and bool(_run_findings(raw_findings, run_id))
-                and bool(raw_alerts["alerts"]))
-        if done:
+        mine = _run_findings(raw_findings, run_id)
+        caught = {json.loads(f["document_list"][0]["document"]).get("lab", {}).get("variant") for f in mine}
+        powered_off = "poweroff_requested" in markers
+        stable = stable + 1 if (powered_off and len(mine) == last_count) else 0
+        last_count = len(mine)
+        # Done once the VM is off, the monitor fired, and every copy has a finding (each copy writes a
+        # persistence unit) - or the findings have stopped coming for three polls.
+        if powered_off and raw_alerts["alerts"] and (
+                len(caught) >= len(run_doc["variants"]) or stable >= 3):
+            complete = True
             break
         if time.monotonic() >= deadline:
-            print(f"run {run_id}: timed out after {args.timeout_s}s (powered off="
-                  f"{'poweroff_requested' in markers}, findings={bool(_run_findings(raw_findings, run_id))}, "
-                  f"alert={bool(raw_alerts['alerts'])}); publishing what siem01 holds", flush=True)
+            complete = False
+            print(f"run {run_id}: timed out after {args.timeout_s}s (powered off={powered_off}, "
+                  f"findings={len(mine)}, alert={bool(raw_alerts['alerts'])}); publishing it as "
+                  "incomplete", flush=True)
             break
         time.sleep(args.poll_interval_s)
+    run_doc["run"]["complete"] = complete
     final = vm_validate.finish(run_doc, raw_findings, raw_alerts)
     caught = sum(1 for v in final["variants"] if v["caught_by_hash"])
     summary = (f"run {run_id}: {final['counters']['events']} events, {final['counters']['findings']} "

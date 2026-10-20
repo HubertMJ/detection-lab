@@ -117,6 +117,31 @@ class FinishTest(unittest.TestCase):
         validate._assert_no_leak(out)
 
 
+class PinnedHashTest(unittest.TestCase):
+    """The control run after copy 1's hash was pinned (lab-20261020T065649Z-6f5f9b): its real
+    findings, fetched the way main_vm does (detectorType + the run's time range)."""
+
+    def test_hash_rule_catches_exactly_copy_1(self):
+        r3 = fixture("vm_run3_docs.json")
+        doc = vv.build_run_doc(r3["run_id"], r3["docs"])
+        final = vv.finish(doc, fixture("vm_run3_findings.json"), {"alerts": []})
+        self.assertEqual([v["caught_by_hash"] for v in final["variants"]], [True, False, False, False])
+        self.assertEqual(final["variants"][0]["sha256"],
+                         "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332")
+        self.assertIn("T1204.002", final["techniques"]["detected"])
+        # No alert handed in: no incident, and the counters say so.
+        self.assertIsNone(final["incident"]["opened_at_variant"])
+        self.assertEqual(final["counters"]["incidents"], 0)
+
+    def test_findings_query_is_scoped_to_the_run(self):
+        doc = vv.build_run_doc(RUN_ID, RUN["docs"])
+        path = run.vm_findings_path(doc)
+        self.assertIn("detectorType=sdp_lab", path)
+        t0 = int(validate._parse(doc["run"]["started_at"]).timestamp() * 1000)
+        self.assertIn(f"startTime={t0}", path)
+        self.assertNotIn("size=10000", path)
+
+
 class PublishTest(unittest.TestCase):
     def test_bulk_action_carries_the_run_id(self):
         sent = {}

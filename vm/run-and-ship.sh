@@ -41,7 +41,8 @@ log() { echo "run-and-ship: $*"; }
 # a manual boot) fall back to this boot's time, so offsets are still sane.
 PVE_MARKERS_WAIT_S=${PVE_MARKERS_WAIT_S:-90}
 waited=0
-while [ ! -r "$PVE_MARKERS" ] && [ "$waited" -lt "$PVE_MARKERS_WAIT_S" ]; do
+# Both lines, not just the file: the PVE side writes it with one printf, but never trust a partial read.
+while ! grep -q '^start_epoch=' "$PVE_MARKERS" 2>/dev/null && [ "$waited" -lt "$PVE_MARKERS_WAIT_S" ]; do
   sleep 2 ; waited=$((waited + 2))
 done
 if [ -r "$PVE_MARKERS" ]; then

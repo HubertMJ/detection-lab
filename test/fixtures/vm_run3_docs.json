@@ -1,0 +1,1102 @@
+{
+ "run_id": "lab-20261020T065649Z-6f5f9b",
+ "docs": [
+  {
+   "@timestamp": "2026-10-20T06:56:24.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:56:50.020044615Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "rollback",
+    "offset_s": 0
+   }
+  },
+  {
+   "@timestamp": "2026-10-20T06:56:26.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:56:50.079478987Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "start",
+    "offset_s": 2
+   }
+  },
+  {
+   "@timestamp": "2026-10-20T06:56:34.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:56:50.134547879Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "booted",
+    "offset_s": 10
+   }
+  },
+  {
+   "@timestamp": "2026-10-20T06:56:45.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:56:50.270247311Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "shipper_up",
+    "offset_s": 21
+   }
+  },
+  {
+   "@timestamp": "2026-10-20T06:56:48.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:56:50.205684877Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "sysmon_up",
+    "offset_s": 24
+   }
+  },
+  {
+   "@timestamp": "2026-10-20T06:56:49.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:56:50.328985012Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "run_start",
+    "offset_s": 25
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "parent": {
+     "name": "python3.13",
+     "pid": 867
+    },
+    "pid": 868,
+    "hash": {
+     "sha256": "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332"
+    },
+    "executable": "/tmp/update-helper"
+   },
+   "@timestamp": "2026-10-20T06:56:49.527Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "process-create",
+    "ingested": "2026-10-20T06:57:28.869126809Z",
+    "code": "1",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "pid": 868,
+    "executable": "/tmp/update-helper"
+   },
+   "@timestamp": "2026-10-20T06:56:49.529Z",
+   "file": {
+    "path": "/root/.config/systemd/user/update-helper.service"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "file-create",
+    "ingested": "2026-10-20T06:57:28.869136838Z",
+    "code": "11",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "pid": 868,
+    "hash": {
+     "sha256": "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332"
+    },
+    "executable": "/tmp/update-helper"
+   },
+   "@timestamp": "2026-10-20T06:56:49.530Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:28.869145263Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "parent": {
+     "name": "python3.13",
+     "pid": 867
+    },
+    "pid": 871,
+    "hash": {
+     "sha256": "2a37b04e44b9a966c0b1dc2a664dd909490e70d28ba5d22d8a0a5850fb628873"
+    },
+    "executable": "/tmp/svc-2394809a"
+   },
+   "@timestamp": "2026-10-20T06:57:04.529Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "process-create",
+    "ingested": "2026-10-20T06:57:30.471684737Z",
+    "code": "1",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "pid": 868,
+    "executable": "/tmp/update-helper",
+    "hash": {
+     "sha256": "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:09.531Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:30.471692129Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-ab096ed5",
+    "parent": {
+     "name": "python3.13",
+     "pid": 867
+    },
+    "pid": 872,
+    "hash": {
+     "sha256": "22441914875e920242670bd1eaa2a77ccade4238422a770162c183278474f430"
+    },
+    "executable": "/tmp/svc-ab096ed5"
+   },
+   "@timestamp": "2026-10-20T06:57:19.531Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "process-create",
+    "ingested": "2026-10-20T06:57:30.471695836Z",
+    "code": "1",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 3,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "pid": 871,
+    "executable": "/tmp/svc-2394809a"
+   },
+   "@timestamp": "2026-10-20T06:57:27.320Z",
+   "file": {
+    "path": "/root/.config/systemd/user/svc-2394809a.service"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "file-create",
+    "ingested": "2026-10-20T06:57:30.471699614Z",
+    "code": "11",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "pid": 871,
+    "executable": "/tmp/svc-2394809a",
+    "hash": {
+     "sha256": "2a37b04e44b9a966c0b1dc2a664dd909490e70d28ba5d22d8a0a5850fb628873"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:27.321Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:30.471703080Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-ab096ed5",
+    "pid": 872,
+    "executable": "/tmp/svc-ab096ed5"
+   },
+   "@timestamp": "2026-10-20T06:57:27.321Z",
+   "file": {
+    "path": "/root/.config/systemd/user/svc-ab096ed5.service"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "file-create",
+    "ingested": "2026-10-20T06:57:30.471705745Z",
+    "code": "11",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 3,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-ab096ed5",
+    "pid": 872,
+    "executable": "/tmp/svc-ab096ed5",
+    "hash": {
+     "sha256": "22441914875e920242670bd1eaa2a77ccade4238422a770162c183278474f430"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:27.322Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:30.471708691Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 3,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "pid": 868,
+    "executable": "/tmp/update-helper",
+    "hash": {
+     "sha256": "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:29.532Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:32.463478622Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "parent": {
+     "name": "python3.13",
+     "pid": 867
+    },
+    "pid": 873,
+    "hash": {
+     "sha256": "d255f52995bb0ce87e702472f5bad8307e0c28db4cfc8cfa5e59886798eaedef"
+    },
+    "executable": "/tmp/svc-cce1ac3b"
+   },
+   "@timestamp": "2026-10-20T06:57:34.532Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "process-create",
+    "ingested": "2026-10-20T06:57:36.465101787Z",
+    "code": "1",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "pid": 873,
+    "executable": "/tmp/svc-cce1ac3b"
+   },
+   "@timestamp": "2026-10-20T06:57:34.533Z",
+   "file": {
+    "path": "/root/.config/systemd/user/svc-cce1ac3b.service"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "file-create",
+    "ingested": "2026-10-20T06:57:36.465111124Z",
+    "code": "11",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "pid": 873,
+    "executable": "/tmp/svc-cce1ac3b",
+    "hash": {
+     "sha256": "d255f52995bb0ce87e702472f5bad8307e0c28db4cfc8cfa5e59886798eaedef"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:34.533Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:36.465118667Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "pid": 871,
+    "executable": "/tmp/svc-2394809a",
+    "hash": {
+     "sha256": "2a37b04e44b9a966c0b1dc2a664dd909490e70d28ba5d22d8a0a5850fb628873"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:47.322Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:50.466694435Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "pid": 868,
+    "executable": "/tmp/update-helper",
+    "hash": {
+     "sha256": "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:49.533Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:52.463932929Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "pid": 873,
+    "executable": "/tmp/svc-cce1ac3b",
+    "hash": {
+     "sha256": "d255f52995bb0ce87e702472f5bad8307e0c28db4cfc8cfa5e59886798eaedef"
+    }
+   },
+   "@timestamp": "2026-10-20T06:57:54.535Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:57:56.465550352Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-ab096ed5",
+    "pid": 872,
+    "executable": "/tmp/svc-ab096ed5",
+    "hash": {
+     "sha256": "22441914875e920242670bd1eaa2a77ccade4238422a770162c183278474f430"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:07.323Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:10.493742663Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 3,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "pid": 871,
+    "executable": "/tmp/svc-2394809a",
+    "hash": {
+     "sha256": "2a37b04e44b9a966c0b1dc2a664dd909490e70d28ba5d22d8a0a5850fb628873"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:07.323Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:10.493752151Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "pid": 868,
+    "executable": "/tmp/update-helper",
+    "hash": {
+     "sha256": "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:09.535Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:12.454170474Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "pid": 873,
+    "executable": "/tmp/svc-cce1ac3b",
+    "hash": {
+     "sha256": "d255f52995bb0ce87e702472f5bad8307e0c28db4cfc8cfa5e59886798eaedef"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:14.536Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:16.462212051Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-ab096ed5",
+    "pid": 872,
+    "executable": "/tmp/svc-ab096ed5",
+    "hash": {
+     "sha256": "22441914875e920242670bd1eaa2a77ccade4238422a770162c183278474f430"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:27.325Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:30.478623070Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 3,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "pid": 871,
+    "executable": "/tmp/svc-2394809a",
+    "hash": {
+     "sha256": "2a37b04e44b9a966c0b1dc2a664dd909490e70d28ba5d22d8a0a5850fb628873"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:27.325Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:30.478633229Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "update-helper",
+    "pid": 868,
+    "executable": "/tmp/update-helper",
+    "hash": {
+     "sha256": "f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:29.536Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:32.616027809Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 1,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "pid": 873,
+    "executable": "/tmp/svc-cce1ac3b",
+    "hash": {
+     "sha256": "d255f52995bb0ce87e702472f5bad8307e0c28db4cfc8cfa5e59886798eaedef"
+    }
+   },
+   "@timestamp": "2026-10-20T06:58:34.537Z",
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:36.466177197Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "pid": 871,
+    "hash": {
+     "sha256": "2a37b04e44b9a966c0b1dc2a664dd909490e70d28ba5d22d8a0a5850fb628873"
+    },
+    "executable": "/tmp/svc-2394809a"
+   },
+   "@timestamp": "2026-10-20T06:58:47.326Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:50.456770645Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-ab096ed5",
+    "pid": 872,
+    "hash": {
+     "sha256": "22441914875e920242670bd1eaa2a77ccade4238422a770162c183278474f430"
+    },
+    "executable": "/tmp/svc-ab096ed5"
+   },
+   "@timestamp": "2026-10-20T06:58:47.326Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:50.456779902Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 3,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "pid": 873,
+    "hash": {
+     "sha256": "d255f52995bb0ce87e702472f5bad8307e0c28db4cfc8cfa5e59886798eaedef"
+    },
+    "executable": "/tmp/svc-cce1ac3b"
+   },
+   "@timestamp": "2026-10-20T06:58:54.539Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:58:56.404385224Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-2394809a",
+    "pid": 871,
+    "hash": {
+     "sha256": "2a37b04e44b9a966c0b1dc2a664dd909490e70d28ba5d22d8a0a5850fb628873"
+    },
+    "executable": "/tmp/svc-2394809a"
+   },
+   "@timestamp": "2026-10-20T06:59:07.327Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:59:10.467635577Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 2,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-ab096ed5",
+    "pid": 872,
+    "hash": {
+     "sha256": "22441914875e920242670bd1eaa2a77ccade4238422a770162c183278474f430"
+    },
+    "executable": "/tmp/svc-ab096ed5"
+   },
+   "@timestamp": "2026-10-20T06:59:07.327Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:59:10.467645385Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 3,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "process": {
+    "name": "svc-cce1ac3b",
+    "pid": 873,
+    "hash": {
+     "sha256": "d255f52995bb0ce87e702472f5bad8307e0c28db4cfc8cfa5e59886798eaedef"
+    },
+    "executable": "/tmp/svc-cce1ac3b"
+   },
+   "@timestamp": "2026-10-20T06:59:14.540Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "destination": {
+    "port": 8080,
+    "ip": "198.51.100.10"
+   },
+   "event": {
+    "action": "network-connection",
+    "ingested": "2026-10-20T06:59:16.477186675Z",
+    "code": "3",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "variant": 4,
+    "run_id": "lab-20261020T065649Z-6f5f9b"
+   }
+  },
+  {
+   "@timestamp": "2026-10-20T06:59:34.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:59:35.677762894Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "drained",
+    "offset_s": 190
+   }
+  },
+  {
+   "@timestamp": "2026-10-20T06:59:34.000Z",
+   "host": {
+    "name": "lab-vm"
+   },
+   "event": {
+    "action": "lifecycle",
+    "ingested": "2026-10-20T06:59:35.749652768Z",
+    "dataset": "lab",
+    "overwrite": false,
+    "kind": "event"
+   },
+   "lab": {
+    "mode": "isolated-vm",
+    "run_id": "lab-20261020T065649Z-6f5f9b",
+    "marker": "poweroff_requested",
+    "offset_s": 190
+   }
+  }
+ ]
+}
