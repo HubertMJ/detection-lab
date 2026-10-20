@@ -2018,14 +2018,14 @@ html.slide-out-backward body > :not(.site-header) {
   --lit: var(--role-entry);
 }
 
-.ld-node:is([data-state="run"], [data-state="detect"], [data-state="record"], [data-state="deliver"]) rect {
+.ld-node:is([data-state="run"], [data-state="detect"], [data-state="record"], [data-state="deliver"], [data-state="incident"]) rect {
   stroke: var(--lit);
   stroke-width: 2.8;
   fill: color-mix(in srgb, var(--lit) calc(var(--role-tint) * 2.2), var(--surface));
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--lit) 65%, transparent));
 }
 
-.ld-node:is([data-state="run"], [data-state="detect"], [data-state="record"], [data-state="deliver"]) .ld-sub {
+.ld-node:is([data-state="run"], [data-state="detect"], [data-state="record"], [data-state="deliver"], [data-state="incident"]) .ld-sub {
   fill: var(--text);
 }
 
@@ -2162,67 +2162,69 @@ html:not(.js) .needs-js {
   display: none;
 }
 
-/* "How four copies became one incident": the beacon monitor's story. Only classes change while it
-   plays (is-on, lab-inc--fired); every box keeps its size, so nothing on the page moves. */
-.lab-inc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
-.lab-inc > *, .lab-inc-stage > *, .lab-inc-join > * { min-width: 0; }
-.lab-inc-stage { position: relative; display: grid; gap: 0.9rem; }
-.lab-inc-copies { list-style: none; margin: 0; padding: 0 0 0 1.1rem; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem;
-  border-left: 3px solid var(--border); transition: border-color 0.4s; }
-.lab-inc--fired .lab-inc-copies { border-left-color: var(--critical); }
-.lab-inc-copy { margin: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
-  opacity: 0.35; transform: translateY(4px); transition: opacity 0.35s, transform 0.35s, border-color 0.35s, box-shadow 0.35s; }
-.lab-inc-copy.is-on { opacity: 1; transform: none; }
-.lab-inc-copy[data-role="opened"].is-on { border-color: var(--critical); box-shadow: 0 0 0 3px color-mix(in srgb, var(--critical) 18%, transparent); }
-.lab-inc-copy[data-role="joined"].is-on { border-color: color-mix(in srgb, var(--critical) 55%, var(--border)); }
-.lab-inc-copy p { margin: 0; }
-.lab-inc-copy__h { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 0.4rem; align-items: baseline; }
-.lab-inc-copy__n { font-weight: 600; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.lab-inc-copy__c { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
-.lab-inc-copy__k, .lab-inc-copy__b { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
-.lab-inc-copy__ioc { color: var(--good); }
-.lab-inc-copy__k > span:first-child { white-space: nowrap; }
-.lab-inc-copy__s { font-size: 0.78rem; margin-top: 0.45rem; min-height: 3.2em; }
-.lab-inc-copy[data-role="opened"] .lab-inc-copy__s { color: var(--critical); font-weight: 600; }
-.lab-inc-join { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 0.8rem; align-items: center; padding-left: 1.1rem; }
-.lab-inc-meter { position: relative; display: flex; gap: 4px; height: 0.9rem; margin-bottom: 1.2rem; }
-.lab-inc-meter__seg { flex: 1; border-radius: 3px; background: var(--border); transition: background 0.35s; }
-.lab-inc-meter__seg.is-on { background: var(--warning); }
-.lab-inc--fired .lab-inc-meter__seg.is-on { background: var(--critical); }
-.lab-inc-meter__thr { position: absolute; top: -0.2rem; bottom: -0.2rem; width: 2px; background: var(--text); font: 0.66rem/1 var(--font-mono); color: var(--text-muted); }
-.lab-inc-meter__thr::after { content: attr(data-at); }
-.lab-inc-meter__thr { white-space: nowrap; text-indent: 6px; padding-top: 1.35rem; }
-.lab-inc-meter--n2 .lab-inc-meter__thr { left: calc(50% - 1px); }
-.lab-inc-meter--n3 .lab-inc-meter__thr { left: calc(33.333% - 1px); }
-.lab-inc-meter--n4 .lab-inc-meter__thr { left: calc(25% - 1px); }
-.lab-inc-meter--n5 .lab-inc-meter__thr { left: calc(20% - 1px); }
-.lab-inc-meter--n6 .lab-inc-meter__thr { left: calc(16.666% - 1px); }
-.lab-inc-meter__thr::after { content: none; }
-.lab-inc-box { padding: 0.75rem 0.9rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); opacity: 0.45; transition: opacity 0.4s, border-color 0.4s, background 0.4s; }
-.lab-inc--fired .lab-inc-box { opacity: 1; border: 1px solid var(--critical); background: color-mix(in srgb, var(--critical) 7%, var(--surface)); }
-.lab-inc-box p { margin: 0; }
-.lab-inc-box__t { font-weight: 700; color: var(--critical); }
-.lab-inc-box__d { font-size: 0.82rem; margin-top: 0.25rem; }
-.lab-inc-box__w { color: var(--text-muted); margin-top: 0.35rem; }
-.lab-inc-replay { justify-self: start; margin-left: 1.1rem; }
-.lab-inc-rule { padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1.25rem; }
-.lab-inc-rule > * { grid-column: 1; min-width: 0; }
-.lab-inc-rule__q, .lab-inc-rule__l, .lab-inc-rule__others { grid-column: 2; }
-.lab-inc-rule__q { grid-row: 1 / span 3; }
-.lab-inc-rule__eyebrow { margin: 0 0 0.3rem; font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.lab-inc-rule__t { margin: 0 0 0.4rem; font-size: 1rem; }
-.lab-inc-rule__d { margin: 0 0 0.6rem; font-size: 0.84rem; }
-.lab-inc-rule__q { margin: 0 0 0.5rem; padding: 0.6rem 0.7rem; font-size: 0.72rem; line-height: 1.6; background: var(--bg); border-radius: var(--radius-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
-.lab-inc-rule__l { margin: 0 0 0.6rem; }
-.lab-inc-rule__others { margin: 0; padding-left: 1.1rem; color: var(--text-muted); display: grid; gap: 0.3rem; }
-@media (max-width: 900px) {
-  .lab-inc-rule { grid-template-columns: minmax(0, 1fr); }
-  .lab-inc-rule > *, .lab-inc-rule__q, .lab-inc-rule__l, .lab-inc-rule__others { grid-column: 1; grid-row: auto; }
-}
-@media (max-width: 640px) {
-  .lab-inc-copies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lab-inc-join { grid-template-columns: 1fr; }
-}
+/* "How four copies became one incident" (ui/lab-incident.ts): a second drawing in the hero diagram's
+   language (ld-*), plus its own li-* parts. Only data-* change while it plays; the SVG keeps its size. */
+/* Two more tones for the ld system: the incident (critical) and the address being hit. */
+.ld-node[data-state="incident"] { --lit: var(--critical); }
+.ld-role--incident { --role: var(--critical); }
+.ld-edge[data-lit="true"][data-tone="incident"] .ld-line { stroke: var(--critical); }
+/* The outcome box at rest: drawn, but dashed and dim, until the monitor fires. */
+.ld-node.li-outcome[data-state="idle"] rect { stroke-dasharray: 5 4; fill: var(--surface); }
+.ld-node.li-outcome[data-state="idle"] :is(.ld-label, .ld-sub) { fill: var(--text-faint); }
+
+.li { margin-bottom: 1.5rem; }
+.li, .li * { overflow-anchor: none; }
+.li-lead { margin: 0 0 1rem; color: var(--text-muted); font-size: 0.95rem; max-width: 60rem; }
+.li-figure { margin: 0; }
+.li-svg { display: block; width: 100%; height: auto; }
+.li-svg--narrow { max-width: 24rem; margin-inline: auto; }
+.li-svg--wide { display: none; }
+@media (min-width: 761px) { .li-svg--wide { display: block; } .li-svg--narrow { display: none; } }
+
+/* the edges draw themselves: pathLength="1" on every line, so no generated CSS is needed */
+/* the base line is always there (grey, as the hero's); the lit overlay draws itself along it, then the base line and its arrowhead take the tone */
+.li-draw { fill: none; stroke: var(--attack); stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.5s ease-out; }
+.ld-edge[data-tone="detect"] .li-draw { stroke: var(--detect); }
+.ld-edge[data-tone="incident"] .li-draw { stroke: var(--critical); }
+.ld-edge[data-lit="true"] .li-draw { stroke-dashoffset: 0; }
+.li .ld-edge .ld-line { transition: stroke 0.1s 0.45s, stroke-width 0.1s 0.45s; }
+.li .ld-edge[data-lit="false"] .ld-line { transition-delay: 0s; }
+.li .ld-node rect { transition: stroke 0.25s, fill 0.25s, filter 0.25s; }
+/* the dot that rides an edge (SMIL animateMotion along the edge's own path; started by script, never under reduced motion) */
+.li-dot { fill: var(--attack); opacity: 0; filter: drop-shadow(0 0 3px var(--attack)) drop-shadow(0 0 1px var(--attack)); }
+.li-dot--detect { fill: var(--detect); filter: drop-shadow(0 0 3px var(--detect)) drop-shadow(0 0 1px var(--detect)); }
+.li-dot--incident { fill: var(--critical); filter: drop-shadow(0 0 3px var(--critical)) drop-shadow(0 0 1px var(--critical)); }
+/* the monitor's gauge: distinct hashes per address against the threshold */
+.li-gauge__sep { stroke: var(--border-strong); stroke-dasharray: 3 3; }
+.li-gauge__t { font: 500 10.5px var(--font-mono); fill: var(--text-muted); }
+.li-gauge__pip { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 1.2; transition: fill 0.25s, stroke 0.25s; }
+.li-gauge__pip[data-on="true"] { fill: var(--detect); stroke: var(--detect); }
+.li[data-fired="true"] .li-gauge__pip[data-on="true"] { fill: var(--critical); stroke: var(--critical); }
+.li-gauge__thr { stroke: var(--text); stroke-width: 2; }
+.li-gauge__n { font: 700 13px var(--font-mono); fill: var(--text); text-anchor: end; }
+.li[data-fired="true"] .li-gauge__n { fill: var(--critical); }
+/* under the figure: the key and the replay, then the words, then the caption */
+.li-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin-top: 0.75rem; }
+/* The status line reserves the height of its longest step (copy 2 opening the incident), so the words
+   changing as it plays never move what is below. */
+.li-status { margin-top: 0.5rem; min-height: 4.5em; }
+@media (max-width: 760px) { .li-status { min-height: 10.5em; } }
+.li-rulecard { margin-top: 1rem; padding: 0.9rem 1rem; border: 1px solid var(--border); border-left: 3px solid var(--detect); border-radius: var(--radius-sm); background: var(--surface); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 0.5rem 1.5rem; align-items: start; }
+.li-rulecard__words > * { min-width: 0; }
+.li-rulecard__eyebrow { margin: 0 0 0.3rem; font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.li-rulecard__t { margin: 0 0 0.4rem; font-size: 1rem; }
+.li-rulecard__d { margin: 0 0 0.5rem; font-size: 0.88rem; color: var(--text-muted); }
+.li-rulecard .small { margin: 0; }
+.li-rulecard .li-rule { margin: 0; }
+@media (max-width: 900px) { .li-rulecard { grid-template-columns: minmax(0, 1fr); } }
+.li-rule { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 1rem; margin: 0.6rem 0 0.7rem; padding: 0.6rem 0.75rem; background: var(--bg); border-radius: var(--radius-sm); font-size: 0.78rem; }
+.li-rule code { font-family: var(--font-mono); color: var(--text); white-space: pre; }
+.li-rule span { color: var(--text-muted); }
+.li-rule__vs { grid-column: 1 / -1; margin-top: 0.35rem; padding-top: 0.5rem; border-top: 1px dashed var(--border); color: var(--text-muted); }
+.li-rule__vs code { color: var(--text-muted); }
+@media (max-width: 760px) { .li-rule { grid-template-columns: minmax(0, 1fr); } .li-rule code { white-space: pre-wrap; overflow-wrap: anywhere; } .li-rule span { margin-bottom: 0.3rem; } }
+.li-copy__beacons { margin: 0 0 0.5rem; font: 0.78rem var(--font-mono); color: var(--text-muted); overflow-wrap: anywhere; }
+.li-copy__beacons b { color: var(--text); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
-  .lab-inc-copy, .lab-inc-meter__seg, .lab-inc-box, .lab-inc-copies { transition: none; }
+  .li-draw, .li .ld-edge .ld-line, .li .ld-node rect, .li-gauge__pip { transition: none; }
 }
