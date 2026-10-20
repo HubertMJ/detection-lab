@@ -40,6 +40,10 @@ export function runControlText(c: LabRunControl, nowMs: number): { label: string
     case "running":
       return { label: "Run in progress", enabled: false, msg: "Following it live below." };
     case "cooldown":
+      if (c.reason === "daily limit") {
+        return { label: "Start a real run now", enabled: false,
+          msg: `Today's ${c.max_per_day ?? ""} runs are used up; next run possible at ${c.next_allowed_at ? HHMM.format(new Date(c.next_allowed_at)) + " UTC" : "midnight UTC"}.`.replace("  ", " ") };
+      }
       return { label: "Start a real run now", enabled: false,
         msg: until !== null && until > 0 ? `The VM rests between runs: next run possible in ${mmss(until)}.` : "Next run possible shortly." };
     case "closed":
