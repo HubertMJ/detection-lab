@@ -175,8 +175,12 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(btn).toBeEnabled();
     await expect(page.locator(".lab-run__msg")).toContainText("10 of 12 runs left today");
     await btn.scrollIntoViewIfNeeded(); // Playwright scrolls to what it clicks; measure after that
+    // The page scrolls smoothly (scroll-behavior: smooth), so wait for that scroll to come to rest.
+    await page.waitForFunction(() => new Promise((ok) => { const a = scrollY; setTimeout(() => ok(scrollY === a), 300); }));
     const y = await page.evaluate(() => window.scrollY);
-    await btn.click();
+    // A DOM click: Playwright's own click scrolls the target to the centre first, which is not the
+    // page moving; this checks that the page itself never scrolls.
+    await btn.evaluate((b) => (b as HTMLButtonElement).click());
     await expect(page.locator(".lab-run__msg")).toContainText("queued");
     expect(posts).toBe(1);
     expect(await page.evaluate(() => window.scrollY)).toBe(y); // clicking never scrolls the page
@@ -206,6 +210,26 @@ test.describe("detection lab preview at /lab/", () => {
     await page.goto("/lab/");
     await expect(page.locator(".lab-vm-copy").first()).toBeVisible();
     await expect(page.locator(".lab-run")).toBeHidden();
+  });
+
+  // The beacon monitor's story: four copies, one address, the threshold crossed at the second distinct
+  // hash, the other copies joining one incident, and the rule shown and linked. No sideways scroll.
+  test("how four copies became one incident: roles, the rule, no overflow", async ({ page }) => {
+    const run = readFileSync(new URL("./fixtures/vm-run-real.json", import.meta.url), "utf8");
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/lab/");
+    const copies = page.locator(".lab-inc-copy");
+    await expect(copies).toHaveCount(4);
+    await expect(copies.nth(0)).toHaveAttribute("data-role", "below");
+    await expect(copies.nth(1)).toHaveAttribute("data-role", "opened");
+    await expect(copies.nth(2)).toHaveAttribute("data-role", "joined");
+    await expect(copies.nth(3)).toHaveAttribute("data-role", "joined");
+    await expect(page.locator(".lab-inc")).toHaveClass(/lab-inc--fired/);
+    await expect(page.locator(".lab-inc-box__d")).toContainText("4 copies");
+    await expect(page.locator(".lab-inc-rule__q")).toContainText("cardinality(process.hash.sha256) >= 2");
+    await expect(page.locator('.lab-inc-rule a[href$="siem/monitors/lab-polymorphic-beacon.json"]')).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
   // No endpoint (the standalone image): the page falls back to the bundled synthetic sample, labelled
