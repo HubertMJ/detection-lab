@@ -38,33 +38,30 @@ const FONT: Record<string, string[]> = {
   9: [" ███ ", "█   █", " ████", "    █", " ███ "], ".": [" ", " ", " ", " ", "█"], "-": ["   ", "   ", "███", "   ", "   "],
   "/": ["    █", "   █ ", "  █  ", " █   ", "█    "], " ": ["  ", "  ", "  ", "  ", "  "],
 };
-export const bigText = (s: string): string[] => [0, 1, 2, 3, 4].map((r) => [...s.toUpperCase()].map((ch) => (FONT[ch] ?? FONT[" "])[r]).join(" "));
+/** Five rows of block letters; accents are dropped (Jabłoński is JABLONSKI), unknown characters are gaps. */
+export const bigText = (s: string): string[] => {
+  const plain = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/gi, "L").toUpperCase();
+  return [0, 1, 2, 3, 4].map((r) => [...plain].map((ch) => (FONT[ch] ?? FONT[" "])[r]).join(" "));
+};
 
-/** A font size that fits `cols` characters in the pre's container, at most `max` px. Measured, not
- * assumed: some platforms round each glyph's advance to whole pixels, so 0.602em is only a start. */
+/** The largest font size, at most `max` px, at which the pre's drawn text fits its container. Measured
+ * on the drawing itself, not assumed: some platforms round each glyph's advance to whole pixels. */
 const fitted = new WeakMap<HTMLElement, string>();
 function fit(pre: HTMLElement, cols: number, max: number): void {
   const avail = contentWidth(pre.parentElement);
   const key = `${Math.round(avail)}:${cols}:${max}:${document.fonts?.check("12px LabMono") ?? true}`;
   if (fitted.get(pre) === key) return;
-  let fs = Math.min(max, avail / cols / 0.602);
-  const probe = document.createElement("span");
-  probe.textContent = "─".repeat(100);
-  probe.style.setProperty("position", "absolute");
-  probe.style.setProperty("visibility", "hidden");
-  pre.append(probe);
   const fits = (size: number): boolean => {
     pre.style.setProperty("--fs", `${size.toFixed(2)}px`);
-    return (probe.getBoundingClientRect().width / 100) * cols <= avail;
+    return pre.scrollWidth <= avail + 0.5;
   };
+  let fs = Math.min(max, avail / cols / 0.602);
   if (!fits(fs)) {
-    // The largest size that fits, by bisection (advances may step in whole pixels).
     let lo = 4, hi = fs;
     for (let i = 0; i < 8; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
     fs = lo;
+    fits(fs);
   }
-  pre.style.setProperty("--fs", `${fs.toFixed(2)}px`);
-  probe.remove();
   fitted.set(pre, key);
 }
 
@@ -122,7 +119,6 @@ function mount(): void {
     const draw = (): void => {
       const narrow = innerWidth <= 760 && words.length > 1;
       const rows = narrow ? words.flatMap((w, i) => [...(i ? [""] : []), ...bigText(w)]) : bigText(banner);
-      fit(pre, Math.max(...rows.map((l) => [...l].length)), 15);
       const frag = document.createDocumentFragment();
       rows.forEach((line, i) => {
         let buf = "";
@@ -139,9 +135,10 @@ function mount(): void {
         frag.append(buf + (i < rows.length - 1 ? "\n" : ""));
       });
       pre.replaceChildren(frag);
+      if (pre.isConnected) fit(pre, Math.max(...rows.map((l) => [...l].length)), 15);
     };
-    draw();
     h1.before(pre);
+    draw();
     added.push(pre);
     if (!still) timers.push(window.setInterval(() => { if (!document.hidden) draw(); }, 320));
     const onResize = (): void => draw();
@@ -205,13 +202,15 @@ const STATE_K: Record<string, string> = { run: "b-attack", detect: "b-detect", r
 
 function frame(v: View, still: boolean): void {
   // The drawing follows its SVG: shown when the SVG's own layout would show it (wide or phone).
-  const shown = getComputedStyle(v.svg).display !== "none";
+  // (Rects, not its own display: a page may hide the variant by hiding its container.)
+  const shown = v.svg.getClientRects().length > 0;
   v.pre.hidden = !shown;
-  if (!shown || (!v.onScreen && v.t > 0)) return;
+  if (!shown) return;
+  // Off screen: no drawing, but keep its size right (the font arriving, a resize), so nothing jumps
+  // when it scrolls in.
+  if (!v.onScreen && v.t > 0) { fit(v.pre, v.d.g.w, 14); return; }
   if (v.dirty) { v.d = fromSvg(v.svg, /narrow/.test(v.pre.className) ? 48 : 176); v.dirty = false; v.packets = []; }
   const { g, edges, nodes } = v.d;
-  // Sized to the column it sits in: as large as 14px allows, never wider than its container.
-  fit(v.pre, g.w, 14);
   const over: Over = new Map();
   const focus = document.activeElement;
   for (const b of g.boxes.values()) {
@@ -248,6 +247,8 @@ function frame(v: View, still: boolean): void {
     if (p.pos >= p.e.cells.length) { v.packets.splice(i, 1); if (p.e.to && !v.fx.has(p.e.to)) v.fx.set(p.e.to, FX); }
   }
   g.render(v.pre, over);
+  // Sized to the column it sits in: as large as 14px allows, never wider than its container.
+  fit(v.pre, g.w, 14);
   v.t++;
 }
 

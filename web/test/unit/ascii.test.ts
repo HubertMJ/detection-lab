@@ -48,6 +48,7 @@ describe("ASCII mode: the character grid", () => {
     const b = bigText("Lab 2");
     expect(b).toHaveLength(5);
     expect(new Set(b.map((l) => [...l].length)).size).toBe(1);
+    expect(bigText("Jabłoński")).toEqual(bigText("JABLONSKI"));
   });
 });
 

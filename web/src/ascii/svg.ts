@@ -22,8 +22,12 @@ function offset(el: Element, svg: Element): [number, number] {
   return [x, y];
 }
 
-/** The colour class of a node or zone: its role--x class, or neutral. */
-const role = (el: Element): string => cls(el).match(/role--([\w-]+)/)?.[1] ?? "neutral";
+/** The colour class of a node: its role--x class, the landing page's project colour (em-site,
+ * em-project, em-lab on the node or its box group), or neutral. */
+const role = (el: Element): string => {
+  const all = `${cls(el)} ${cls(el.querySelector("g"))}`;
+  return all.match(/role--([\w-]+)/)?.[1] ?? all.match(/\bem-(site|project|lab|path)\b/)?.[1] ?? "neutral";
+};
 
 /** Word-wrap one line to `w` characters, breaking at " · " or spaces. */
 export function wrap(s: string, w: number): string[] {
@@ -42,7 +46,9 @@ interface NodeIn { id: string; el: Element; x: number; y: number; w: number; h: 
 export function fromSvg(svg: SVGSVGElement, maxCols: number): Drawing {
   const vb = (svg.getAttribute("viewBox") ?? "0 0 100 100").split(/[\s,]+/).map(Number);
   const nodes: NodeIn[] = [];
-  for (const el of svg.querySelectorAll("g[data-node]")) {
+  // A node is any element carrying data-node: a <g>, or a link (<a>) around one.
+  for (const el of svg.querySelectorAll("[data-node]")) {
+    if (el.parentElement?.closest("[data-node]")) continue;
     const rect = el.querySelector("rect");
     const texts = [...el.querySelectorAll("text")].filter((t) => !t.hasAttribute("data-count"));
     let lines = texts.map((t) => (t.textContent ?? "").trim()).filter(Boolean);
@@ -88,14 +94,14 @@ export function fromSvg(svg: SVGSVGElement, maxCols: number): Drawing {
 
   // Zones, then their titles (lines pass behind a title).
   for (const r of svg.querySelectorAll("rect")) {
-    if (r.closest("g[data-node]") || !/zone/.test(`${cls(r)} ${cls(r.parentElement)}`)) continue;
+    if (r.closest("[data-node]") || !/zone/.test(`${cls(r)} ${cls(r.parentElement)}`)) continue;
     const [tx, ty] = offset(r, svg);
     const x = num(r.getAttribute("x")) + tx, y = num(r.getAttribute("y")) + ty;
     g.frame(Y(y), X(x), X(x + num(r.getAttribute("width"))) - X(x) + 1, Y(y + num(r.getAttribute("height"))) - Y(y) + 1);
   }
   const labels: { s: string; x: number; y: number; a: string }[] = [];
   for (const t of svg.querySelectorAll("text")) {
-    if (t.closest("g[data-node]")) continue;
+    if (t.closest("[data-node]")) continue;
     const [tx, ty] = offset(t, svg);
     const x = num(t.getAttribute("x")) + tx, y = num(t.getAttribute("y")) + ty;
     if (/zone/.test(cls(t))) {
@@ -103,7 +109,9 @@ export function fromSvg(svg: SVGSVGElement, maxCols: number): Drawing {
       const sub = [...t.querySelectorAll("tspan")].map((c) => c.textContent?.trim()).filter(Boolean).join(" ");
       // On the frame's top edge when the frame is just above, as a terminal draws a titled box.
       const r = [Y(y) - 1, Y(y) - 2].find((rr) => /^[┄╭]$/.test(g.get(rr, X(x)))) ?? Y(y);
-      g.put(r, X(x), ` ${main.toUpperCase()} `, "z-t");
+      // A zone's name in capitals, as a terminal heading; a subtitle drawn as its own text stays as written.
+      const isSub = /sub/.test(cls(t));
+      g.put(r, X(x), ` ${isSub ? main : main.toUpperCase()} `, isSub ? "z-s" : "z-t");
       if (sub) g.put(r, X(x) + [...main].length + 3, `${sub} `, "z-s");
     } else {
       const s = (t.textContent ?? "").trim();
@@ -132,7 +140,7 @@ export function fromSvg(svg: SVGSVGElement, maxCols: number): Drawing {
   const seen = new Set<Element>();
   for (const p of svg.querySelectorAll("path")) {
     const c = cls(p);
-    if (p.closest("defs, marker, g[data-node]") || !/line|edge/.test(c) || /head|glow|draw|arrow/.test(c)) continue;
+    if (p.closest("defs, marker, [data-node]") || !/line|edge/.test(c) || /head|glow|draw|arrow/.test(c)) continue;
     const group = p.closest("[data-edge]");
     if (group) { if (seen.has(group)) continue; seen.add(group); }
     const n = (p.getAttribute("d") ?? "").match(/-?\d*\.?\d+(?:e-?\d+)?/gi)?.map(Number) ?? [];

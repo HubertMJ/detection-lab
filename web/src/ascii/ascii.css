@@ -99,6 +99,13 @@ html:not(.ascii) .ascii-dg { display: none; }
 .ascii-dg :is(.hot, .pk, .on, .focus):is(.b-detect, .r-detect) { color: var(--detect); }
 .ascii-dg :is(.hot, .pk, .on, .focus):is(.b-record, .r-record, .b-respond, .r-respond, .b-response, .r-response) { color: var(--respond); }
 .ascii-dg :is(.hot, .pk, .on, .focus):is(.b-neutral, .r-neutral, .b-plain, .r-plain, .b-path, .r-path) { color: var(--text); }
+/* The landing page's projects: green this site, orange the cluster, violet the lab. */
+.ascii-dg :is(.b-site, .r-site) { color: #3f5a45; } .ascii-dg .b-site-t { color: var(--respond); }
+.ascii-dg :is(.b-project, .r-project) { color: #7a4a30; } .ascii-dg .b-project-t { color: var(--serious); }
+.ascii-dg :is(.b-lab, .r-lab) { color: #5a4a7a; } .ascii-dg .b-lab-t { color: #c792ea; }
+.ascii-dg :is(.hot, .pk, .on, .focus):is(.b-site, .r-site) { color: var(--respond); }
+.ascii-dg :is(.hot, .pk, .on, .focus):is(.b-project, .r-project) { color: var(--serious); }
+.ascii-dg :is(.hot, .pk, .on, .focus):is(.b-lab, .r-lab) { color: #c792ea; }
 .ascii-dg .inv:is(.b-attack, .b-incident) { background: var(--attack); } .ascii-dg .inv.b-detect { background: var(--detect); }
 .ascii-dg .inv.b-entry { background: var(--role-entry); } .ascii-dg .inv:is(.b-record, .b-respond) { background: var(--respond); }
 

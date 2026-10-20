@@ -301,7 +301,7 @@ test.describe("detection lab preview at /lab/", () => {
     expect(await page.locator(".lab-diagram__svg--wide").evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
     // Every drawing fits its column, and the page never scrolls sideways.
     for (const pre of await page.locator("pre.ascii-dg:not([hidden])").all()) {
-      expect(await pre.evaluate((el) => el.scrollWidth <= (el.parentElement as HTMLElement).clientWidth + 1)).toBe(true);
+      await expect.poll(() => pre.evaluate((el) => el.scrollWidth <= (el.parentElement as HTMLElement).clientWidth + 1)).toBe(true);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     // A click on a box opens that part's caption, as a click on the SVG does.
