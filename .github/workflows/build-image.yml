@@ -12,8 +12,9 @@ on:
   push:
     branches: [main]
     paths: ["web/**", ".github/workflows/build-image.yml"]
+  # README.md: its diagram is checked against web/src/diagram (a README-only change on main builds nothing).
   pull_request:
-    paths: ["web/**", ".github/workflows/build-image.yml"]
+    paths: ["web/**", "README.md", ".github/workflows/build-image.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -47,9 +48,16 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: e2e tests (playwright, chromium and firefox)
+      # The image's builder stage runs the unit tests too, but without README.md: here the diagram's
+      # freshness check (README's mermaid is the model's) runs as well.
+      - name: unit tests and the README diagram
         run: |
           npm ci --ignore-scripts
+          npm test
+          npm run diagram -- --check
+
+      - name: e2e tests (playwright, chromium and firefox)
+        run: |
           npx playwright install --with-deps chromium firefox
           npm run test:e2e
 

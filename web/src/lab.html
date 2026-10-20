@@ -74,6 +74,11 @@
         <li><h3>SIEM</h3><p>Sigma rules match single events; OpenSearch Alerting monitors count across them and score risk per entity.</p></li>
         <li><h3>Report</h3><p>Ground truth against findings, per technique: detected or missed, and how long it took.</p></li>
       </ol>
+      <figure class="lab-diagram" id="lab-diagram" aria-labelledby="lab-diagram-caption">
+        {{diagram.wide}}
+        {{diagram.narrow}}
+        <figcaption class="small" id="lab-diagram-caption">How a run reaches this page, both variants: the isolated VM on the Proxmox host (a real run, daily or on demand) and the CronJob in the cluster (synthetic events) feed the same SIEM, whose validator writes the run document the cluster API serves here. Orange: where the copies run. Amber: what detects. Violet: what records. Blue: what you reach. Dotted: a side link.</figcaption>
+      </figure>
       <p class="section__more" id="lab-next">Next step: send the same events to the OpenSearch SIEM behind <a href="/cluster/#correlation">the self-defending cluster</a>, so the findings come from real rules instead of being computed in this page.</p>
     </div>
   </section>

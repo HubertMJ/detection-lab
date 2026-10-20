@@ -1800,3 +1800,119 @@ html.slide-out-backward body > :not(.site-header) {
   .lab-rp-feeds { grid-template-columns: 1fr; }
   .lab-rp-lanes { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---- How a run reaches this page (src/diagram, inlined by the build): classes only, no style attributes ---- */
+.lab-diagram {
+  margin: 1.5rem 0 0;
+}
+
+.lab-diagram__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lab-diagram__svg--narrow {
+  max-width: 24rem;
+  margin-inline: auto;
+}
+
+.lab-diagram__svg--wide {
+  display: none;
+}
+
+@media (min-width: 761px) {
+  .lab-diagram__svg--wide {
+    display: block;
+  }
+
+  .lab-diagram__svg--narrow {
+    display: none;
+  }
+}
+
+.lab-diagram figcaption {
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ld-zone rect {
+  fill: color-mix(in srgb, var(--surface) 55%, transparent);
+  stroke: var(--border);
+  stroke-dasharray: 4 4;
+}
+
+.ld-zonetitle {
+  font: 600 11px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: var(--text-muted);
+}
+
+.ld-zonesub {
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  fill: var(--text-faint);
+}
+
+.ld-node rect {
+  fill: var(--surface);
+  stroke: var(--neutral);
+  stroke-width: 1.5;
+}
+
+.ld-role--attack rect {
+  stroke: var(--attack);
+  fill: color-mix(in srgb, var(--attack) var(--role-tint), var(--surface));
+}
+
+.ld-role--detect rect {
+  stroke: var(--detect);
+  fill: color-mix(in srgb, var(--detect) var(--role-tint), var(--surface));
+}
+
+.ld-role--record rect {
+  stroke: var(--role-record);
+  fill: color-mix(in srgb, var(--role-record) var(--role-tint), var(--surface));
+}
+
+.ld-role--entry rect {
+  stroke: var(--role-entry);
+  fill: color-mix(in srgb, var(--role-entry) var(--role-tint), var(--surface));
+}
+
+.ld-label {
+  font: 650 13.5px var(--font-sans);
+  fill: var(--text);
+  text-anchor: middle;
+}
+
+.ld-sub {
+  font: 400 10.5px var(--font-mono);
+  fill: var(--text-muted);
+  text-anchor: middle;
+}
+
+.ld-line {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.ld-edge--side .ld-line {
+  stroke-dasharray: 2 4;
+}
+
+.ld-head {
+  fill: var(--text-faint);
+}
+
+.ld-edgelabel {
+  font: 500 10.5px var(--font-mono);
+  fill: var(--text-muted);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}

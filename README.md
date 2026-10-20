@@ -16,31 +16,58 @@ up one to one.
 | What | Where |
 |---|---|
 | The generator, validator and indexer (python3 stdlib only) | [lab/](lab/) |
+| Variant B: the scenario, its runner and the VM's Fluent Bit config | [vm/](vm/) |
 | A synthetic replay of scenario C, the labelled sample | [replay/scenario-c.json](replay/scenario-c.json) |
 | The web app: the `/lab/` preview, its own nginx image | [web/](web/) |
 | The preview, live | https://hubertjablon.ski/lab/ |
 
 ## How it fits together
 
+<!-- diagram: generated from web/src/diagram/model.ts by `npm run diagram` in web/; do not edit -->
 ```mermaid
 flowchart LR
-    subgraph GEN["Generator (lab/, python) — run.py drives one run (runner image, daily CronJob)"]
-        G["generate.py<br/>4 copies: new hash, new name"] --> EV["events.ndjson (sdp-lab)<br/>+ run document (ground truth)"]
-        EV --> IDX["indexer.py<br/>bulk-index on siem01"]
-        IDX --> OS[("OpenSearch on siem01<br/>Sigma rules · Alerting monitors<br/>(commercial-SIEM-equivalent)")]
-        OS -. "poll findings + alerts" .-> VAL["validate.py<br/>findings vs ground truth,<br/>coverage, time to detect"]
-        EV -. run doc .-> VAL
-        VAL --> RUN[("final run document<br/>index lab-runs")]
+    subgraph k3s["k3s01 · the cluster"]
+        runner["lab-runner CronJob<br/>variant A · 03:30 UTC"]
+        page["/lab/ page<br/>the replay · Start run now"]
+        api["Cluster API<br/>/cluster/api/lab/ · latest · vm · raw · run"]
     end
-    subgraph WEB["Web app (web/, its own signed image)"]
-        PAGE["/lab/ preview<br/>nginx-unprivileged :8080"]
+    subgraph pve["Proxmox host · lab-vm is isolated: egress to siem01 only"]
+        timer["lab-vm-run timer<br/>daily 03:00 UTC"]
+        agent["Run-now agent<br/>polls the cluster API · outbound only"]
+        reset["Reset and start<br/>rollback to lab-clean · markers"]
+        vm["lab-vm<br/>VM 122 · Sysmon for Linux · Fluent Bit"]
     end
-    RUN -. "GET /cluster/api/lab/latest<br/>(real run, or synthetic fallback)" .-> PAGE
-    SAMPLE[("web/src/lib/lab-replay.json<br/>synthetic sample, the fallback")] --> PAGE
+    subgraph siem["siem01"]
+        stream["sdp-lab stream<br/>OpenSearch · append-only"]
+        sink["lab-sink<br/>:8080 · beacon sink"]
+        detector["Detector + monitor<br/>Security Analytics · beacon monitor"]
+        validator["Validator<br/>lab-validator timer · 03:20 UTC"]
+        runs["lab-runs<br/>run documents"]
+    end
+    timer -- "daily" --> reset
+    agent -- "on demand" --> reset
+    reset -- "start" --> vm
+    vm -- "events" --> stream
+    vm -. "beacons" .-> sink
+    runner -- "synthetic events" --> stream
+    stream -- "rules" --> detector
+    detector -- "findings" --> validator
+    validator -- "writes" --> runs
+    runs -- "read-only" --> api
+    page <-- "JSON" --> api
+    agent -. "polls for a run request, outbound" .-> api
 ```
+<!-- /diagram -->
 
-Variant A executes nothing: `generate.py` only writes synthetic JSON (the events a run would
-produce, plus the ground truth). The events are indexed into the real SIEM, its own Sigma rules and
+The same model draws this diagram on the `/lab/` page (wide and phone layouts, inline SVG), and a
+unit test (`web/test/unit/diagram.test.ts`) fails when this copy is stale.
+
+Variant B runs a real, harmless program on an isolated VM ([`vm/`](vm/README.md)): a timer on the
+Proxmox host (or, on demand, an agent that polls the cluster API outbound) rolls the VM back to a
+clean snapshot and starts it, Sysmon for Linux records the four copies, Fluent Bit ships the events
+to the SIEM, and the VM powers off; a validator timer on siem01 (`run.py --mode isolated-vm`) then
+writes the run document. Variant A executes nothing: `generate.py` only writes synthetic JSON (the
+events a run would produce, plus the ground truth). The events are indexed into the real SIEM, its own Sigma rules and
 Alerting monitors do the detecting, and `validate.py` compares what they caught against the ground
 truth. The web app reads a `LabReplay` and computes everything in the browser: it fetches the latest
 real run from the cluster API (`/cluster/api/lab/latest`, same origin) and, until that endpoint
@@ -51,7 +78,7 @@ one to one.
 ## The generator (`lab/`)
 
 Python 3 standard library only (it runs on siem01, Debian, no `pip`). Variant A executes no binary;
-a real test binary belongs to variant B (an isolated VM), which is out of scope here.
+a real test binary belongs to variant B (an isolated VM, [`vm/`](vm/README.md)).
 
 - **`generate.py`** writes one run: `--copies N` (default 4) copies of a harmless marker artefact,
   each with a new SHA-256 and a new file name. Copy 1 is deterministic (a fixed byte blob, constant

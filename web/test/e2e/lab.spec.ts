@@ -7,6 +7,48 @@ import { expect, test } from "@playwright/test";
 // page, so it works in Firefox too, where route interception misses top-level navigations).
 
 test.describe("detection lab preview at /lab/", () => {
+  // The architecture diagram (src/diagram, inline SVG from the build): the drawing for the width is
+  // shown, every word inside its box, no line through a box, nothing wider than the page; it is in
+  // the HTML before any script runs, so the page never shifts when the API answers.
+  test("the run diagram fits its boxes at this width and never moves the page", async ({ page }, info) => {
+    await page.goto("/lab/");
+    const shown = info.project.name === "phone" ? "narrow" : "wide";
+    await expect(page.locator(`.lab-diagram__svg--${shown}`)).toBeVisible();
+    await expect(page.locator(`.lab-diagram__svg--${shown === "wide" ? "narrow" : "wide"}`)).toBeHidden();
+    const problems = await page.evaluate((view) => {
+      const out: string[] = [];
+      const svg = document.querySelector<SVGSVGElement>(`.lab-diagram__svg--${view}`);
+      if (!svg) return ["no diagram"];
+      const rects = [...svg.querySelectorAll<SVGRectElement>(".ld-node rect")].map((r) => r.getBBox());
+      for (const t of svg.querySelectorAll<SVGTextElement>(".ld-node text")) {
+        const b = t.getBBox();
+        const box = rects.find((r) => b.x + b.width / 2 > r.x && b.x + b.width / 2 < r.x + r.width && b.y + b.height / 2 > r.y && b.y + b.height / 2 < r.y + r.height);
+        if (!box || b.x < box.x + 6 || b.x + b.width > box.x + box.width - 6) out.push(`"${t.textContent}" leaves its box`);
+      }
+      for (const e of svg.querySelectorAll<SVGPathElement>(".ld-line")) {
+        for (let l = 0; l <= e.getTotalLength(); l += 2) {
+          const p = e.getPointAtLength(l);
+          if (rects.some((r) => p.x > r.x + 1 && p.x < r.x + r.width - 1 && p.y > r.y + 1 && p.y < r.y + r.height - 1)) {
+            out.push(`a line runs through a box at ${Math.round(p.x)},${Math.round(p.y)}`);
+            break;
+          }
+        }
+      }
+      if (document.documentElement.scrollWidth > document.documentElement.clientWidth) out.push("horizontal scroll");
+      return out;
+    }, shown);
+    expect(problems).toEqual([]);
+    // Present in the served HTML itself, not drawn by a script.
+    const html = await (await page.request.get("/lab/")).text();
+    expect(html).toContain('class="lab-diagram__svg lab-diagram__svg--wide"');
+    expect(html).toContain('class="lab-diagram__svg lab-diagram__svg--narrow"');
+    const before = await page.locator("#lab-diagram").boundingBox();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(300);
+    const after = await page.locator("#lab-diagram").boundingBox();
+    expect(after?.height).toBe(before?.height);
+  });
+
   test("renames every copy by default; picking a copy redraws the panel and never scrolls the page", async ({ page }) => {
     await page.goto("/lab/");
     await expect(page.locator(".lab-rename__box")).not.toBeChecked();

@@ -11,6 +11,7 @@ import * as esbuild from "esbuild";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadDiagram } from "./diagram-lib.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const i = process.argv.indexOf("--outdir");
@@ -36,7 +37,12 @@ const result = await esbuild.build({
   logLevel: "warning",
 });
 
-const names = {};
+// The architecture diagram (src/diagram): its two drawings go into the page as inline SVG, so it is there
+// before any script runs and never shifts the layout.
+const diagram = await loadDiagram();
+const problems = diagram.validate();
+if (problems.length) throw new Error(`src/diagram/model.ts: ${problems.join("; ")}`);
+const names = { "diagram.wide": diagram.svg(diagram.wide()), "diagram.narrow": diagram.svg(diagram.narrow()) };
 for (const [file, meta] of Object.entries(result.metafile.outputs)) {
   if (!meta.entryPoint) continue;
   const ext = file.endsWith(".css") ? "css" : "js";
@@ -52,4 +58,4 @@ for (const p of PAGES) {
 }
 // Served under /lab/ too (favicon at /lab/favicon.svg), so the image is self-contained behind the prefix.
 await cp(join(root, "static"), join(out, "lab"), { recursive: true });
-console.log(`built: ${Object.values(names).join(", ")}`);
+console.log(`built: ${Object.entries(names).filter(([k]) => !k.startsWith("diagram.")).map(([, v]) => v).join(", ")}`);
