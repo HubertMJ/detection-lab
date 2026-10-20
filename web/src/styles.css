@@ -2160,6 +2160,8 @@ html.slide-out-backward body > :not(.site-header) {
 /* Without JavaScript the "pick a part" hint does nothing: hide it. */
 html:not(.js) .needs-js {
   display: none;
+}
+
 /* "How four copies became one incident": the beacon monitor's story. Only classes change while it
    plays (is-on, lab-inc--fired); every box keeps its size, so nothing on the page moves. */
 .lab-inc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
