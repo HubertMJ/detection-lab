@@ -212,27 +212,60 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(page.locator(".lab-run")).toBeHidden();
   });
 
-  // The beacon monitor's story: four copies, one address, the threshold crossed at the second distinct
-  // hash, the other copies joining one incident, and the rule shown and linked. No sideways scroll.
-  test("how four copies became one incident: roles, the rule, no overflow", async ({ page }) => {
-    const run = readFileSync(new URL("./fixtures/vm-run-real.json", import.meta.url), "utf8");
+  // The beacon monitor's story as a drawing: four copies converge on one address, the monitor's gauge
+  // crosses its threshold at the second distinct hash, one incident; boxes open captions; no overflow.
+  test("how four copies became one incident: the drawing, its final state, captions, no overflow", async ({ page }, info) => {
+    const run = readFileSync(new URL("./fixtures/vm-run-real-pinned.json", import.meta.url), "utf8");
     await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/lab/");
-    const copies = page.locator(".lab-inc-copy");
-    await expect(copies).toHaveCount(4);
-    await expect(copies.nth(0)).toHaveAttribute("data-role", "below");
-    await expect(copies.nth(1)).toHaveAttribute("data-role", "opened");
-    await expect(copies.nth(2)).toHaveAttribute("data-role", "joined");
-    await expect(copies.nth(3)).toHaveAttribute("data-role", "joined");
-    await expect(page.locator(".lab-inc")).toHaveClass(/lab-inc--fired/);
-    // The section's own styles apply (a lost brace once swallowed them all, live).
-    expect(await page.locator(".lab-inc-copies").evaluate((el) => getComputedStyle(el).display)).toBe("grid");
-    expect(await page.locator(".lab-inc-copy").first().evaluate((el) => getComputedStyle(el).borderTopStyle)).toBe("solid");
-    await expect(page.locator(".lab-inc-box__d")).toContainText("4 copies");
-    await expect(page.locator(".lab-inc-rule__q")).toContainText("cardinality(process.hash.sha256) >= 2");
-    await expect(page.locator('.lab-inc-rule a[href$="siem/monitors/lab-polymorphic-beacon.json"]')).toHaveCount(1);
+    const li = page.locator("section.li");
+    await expect(li).toHaveAttribute("data-fired", "true");
+    const svgSel = info.project.name === "phone" ? ".li-svg--narrow" : ".li-svg--wide";
+    const fig = page.locator(svgSel);
+    await expect(fig).toBeVisible();
+    // the section's styles apply (a lost brace once swallowed them all, live)
+    expect(await fig.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+    await expect(fig.locator('[data-node="inc"]')).toHaveAttribute("data-state", "incident");
+    await expect(fig.locator('[data-node="hash"]')).toHaveAttribute("data-state", "detect");
+    for (const n of [1, 2, 3, 4]) await expect(fig.locator(`[data-node="c${n}"]`)).toHaveAttribute("data-state", "run");
+    await expect(fig.locator("[data-count]")).toHaveText("4 ≥ 2");
+    await expect(fig.locator('.li-gauge__pip[data-on="true"]')).toHaveCount(4);
+    await expect(page.locator(".li-status")).toContainText("One incident");
+    // every label sits inside its box, and no line runs through a box it does not touch
+    const fit = await fig.evaluate((svg) => {
+      const nodes = [...svg.querySelectorAll(".ld-node")].map((g) => ({ r: g.querySelector("rect")!.getBBox(), t: [...g.querySelectorAll("text")].map((t) => (t as SVGTextElement).getBBox()) }));
+      const inside = nodes.every(({ r, t }) => t.every((b) => b.x >= r.x - 0.5 && b.x + b.width <= r.x + r.width + 0.5 && b.y >= r.y - 0.5 && b.y + b.height <= r.y + r.height + 0.5));
+      return inside;
+    });
+    expect(fit, "every label inside its box").toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    // a box opens its caption with the rule's source; Escape closes it
+    const mon = fig.locator('[data-node="mon"]');
+    await mon.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".li-caption")).toBeVisible();
+    await expect(page.locator('.li-caption a[href$="siem/monitors/lab-polymorphic-beacon.json"]')).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".li-caption")).toBeHidden();
+    await expect(mon).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator(".li-rule")).toContainText("cardinality(process.hash.sha256) >= 2");
+    // replay keeps the section's size: nothing on the page moves
+    const h0 = (await li.boundingBox())!.height;
+    await page.locator(".li-replay").click();
+    expect(Math.abs((await li.boundingBox())!.height - h0)).toBeLessThan(1);
+  });
+
+  test("how four copies became one incident: it plays, and its size never changes", async ({ page }) => {
+    const run = readFileSync(new URL("./fixtures/vm-run-real-pinned.json", import.meta.url), "utf8");
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    await page.goto("/lab/");
+    const li = page.locator("section.li");
+    await li.scrollIntoViewIfNeeded();
+    const h0 = (await li.boundingBox())!.height;
+    await expect(page.locator(".li-status")).toContainText("Copy 2", { timeout: 6000 });
+    expect(Math.abs((await li.boundingBox())!.height - h0)).toBeLessThan(1);
+    await expect(li).toHaveAttribute("data-fired", "true", { timeout: 9000 });
   });
 
   // No endpoint (the standalone image): the page falls back to the bundled synthetic sample, labelled
