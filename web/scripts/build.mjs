@@ -20,6 +20,22 @@ const out = resolve(root, i > 0 ? process.argv[i + 1] : "dist");
 /** The pages this image serves, under the /lab/ prefix. */
 const PAGES = [{ src: "src/lab.html", out: "lab/index.html" }];
 
+/**
+ * The diagram's traffic: its dots' routes and timing, drawn from the same layout into a stylesheet that
+ * styles.css imports (`@import "diagram-traffic.css"`), so it is bundled into the one hashed CSS file
+ * (the CSP allows no inline style, and offset-path needs the route).
+ */
+const trafficPlugin = {
+  name: "diagram-traffic",
+  setup(build) {
+    build.onResolve({ filter: /^diagram-traffic\.css$/ }, () => ({ path: "diagram-traffic.css", namespace: "diagram" }));
+    build.onLoad({ filter: /.*/, namespace: "diagram" }, async () => {
+      const { trafficCss } = await loadDiagram();
+      return { contents: trafficCss(), loader: "css" };
+    });
+  },
+};
+
 await rm(out, { recursive: true, force: true });
 await mkdir(join(out, "lab", "assets"), { recursive: true });
 
@@ -35,6 +51,7 @@ const result = await esbuild.build({
   metafile: true,
   legalComments: "none",
   logLevel: "warning",
+  plugins: [trafficPlugin],
 });
 
 // The architecture diagram (src/diagram): its two drawings go into the page as inline SVG, so it is there

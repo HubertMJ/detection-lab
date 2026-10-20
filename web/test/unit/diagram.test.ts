@@ -5,11 +5,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { EDGES, NARROW, NODES, ZONES, validate } from "../../src/diagram/model";
-import { mermaid, narrow, svg, wide, wrapSub } from "../../src/diagram/layout";
+import { EDGES, NARROW, NODES, ZONES, sourceUrl, validate } from "../../src/diagram/model";
+import { TRAFFIC, mermaid, narrow, svg, trafficCss, wide, wrapSub } from "../../src/diagram/layout";
+import { RUN_PATH, phaseOf, renderCaption } from "../../src/ui/diagram";
 
 describe("the lab diagram's model", () => {
-  it("is consistent: known zones and nodes, the phone order holds every node once", () => {
+  it("is consistent: known zones and nodes, the phone order without repeats, every node with words", () => {
     expect(validate()).toEqual([]);
   });
 
@@ -49,15 +50,22 @@ describe("the lab diagram's model", () => {
 
 describe("the drawings", () => {
   for (const dr of [wide(), narrow()]) {
-    it(`${dr.view}: an img svg with a title and description, a group per node and edge, no style or script`, () => {
+    it(`${dr.view}: a group svg with a title and description, every node a focusable button, no style or script`, () => {
       const s = svg(dr);
-      expect(s).toMatch(new RegExp(`^<svg class="lab-diagram__svg lab-diagram__svg--${dr.view}" viewBox="0 0 [\\d.]+ [\\d.]+" role="img"`));
+      expect(s).toMatch(new RegExp(`^<svg class="lab-diagram__svg lab-diagram__svg--${dr.view}" viewBox="0 0 [\\d.]+ [\\d.]+" role="group"`));
       expect(s).toContain("<title");
       expect(s).toContain("<desc");
       expect(s).not.toMatch(/ style=|<style|<script|<foreignObject| on\w+=/i);
-      for (const n of NODES) expect(s).toContain(`data-node="${n.id}"`);
-      for (const e of EDGES) expect(s).toContain(`data-edge="${e.from}-${e.to}"`);
-      expect((s.match(/class="ld-edge ld-edge--side"/g) ?? []).length).toBe(EDGES.filter((e) => e.kind === "side").length);
+      const shown = NODES.filter((n) => dr.boxes.has(n.id));
+      for (const n of shown) expect(s).toMatch(new RegExp(`data-node="${n.id}" data-state="idle" tabindex="0" role="button" aria-label="[^"]+" aria-expanded="false"`));
+      const drawn = EDGES.filter((e) => dr.boxes.has(e.from) && dr.boxes.has(e.to));
+      for (const e of drawn) expect(s).toContain(`data-edge="${e.from}-${e.to}"`);
+      expect((s.match(/class="ld-edge ld-edge--side"/g) ?? []).length).toBe(drawn.filter((e) => e.kind === "side").length);
+      // The traffic: a dot per lane, a glow on each of its edges.
+      for (const l of Object.keys(TRAFFIC) as (keyof typeof TRAFFIC)[]) {
+        expect(s).toContain(`class="ld-dot ld-dot--${l}"`);
+        for (const id of TRAFFIC[l].edges) expect(s).toContain(`class="ld-glow ld-glow--${l}" id="${dr.view === "wide" ? "ld" : "ldn"}-glow-${id}"`);
+      }
     });
 
     it(`${dr.view}: every box inside the drawing, no two boxes overlapping`, () => {
@@ -72,7 +80,10 @@ describe("the drawings", () => {
     });
   }
 
-  it("the phone draws every node in its order, top to bottom", () => {
+  it("the phone draws its nodes in their order, top to bottom; the way in and the real run, not the CronJob or the sink", () => {
+    expect(NARROW).not.toContain("runner");
+    expect(NARROW).not.toContain("sink");
+    for (const id of RUN_PATH.map((s) => s.node)) expect(NARROW).toContain(id);
     const ys = NARROW.map((id) => narrow().boxes.get(id)?.y ?? -1);
     expect([...ys].sort((p, q) => p - q)).toEqual(ys);
   });
@@ -92,5 +103,75 @@ describe("README.md's diagram is generated from the model", () => {
     const block = text.split("<!-- diagram: generated from web/src/diagram/model.ts")[1]?.split("<!-- /diagram -->")[0] ?? "";
     expect(block).toContain("```mermaid\n");
     expect(block.split("```mermaid\n")[1]?.split("\n```")[0]).toBe(mermaid());
+  });
+});
+
+describe("captions: every node says what it is and where it lives", () => {
+  const repoRoot = join(process.cwd(), "..");
+  it("each source is a path in one of the two repositories; this repository's exist", () => {
+    for (const n of NODES) {
+      for (const src of n.sources) {
+        expect(src).toMatch(/^(lab|sdp):[\w./-]+$/);
+        if (src.startsWith("lab:")) expect(existsSync(join(repoRoot, src.slice(4))), src).toBe(true);
+      }
+    }
+    expect(sourceUrl("lab:vm/scenario.c")).toBe("https://github.com/HubertMJ/detection-lab/tree/main/vm/scenario.c");
+    expect(sourceUrl("sdp:scripts/lab-vm-provision.sh")).toBe("https://github.com/HubertMJ/self-defending-portfolio/tree/main/scripts/lab-vm-provision.sh");
+  });
+
+  it("the nodes point where the code is", () => {
+    const src = (id: string) => NODES.find((n) => n.id === id)?.sources ?? [];
+    expect(src("vm")).toEqual(expect.arrayContaining(["lab:vm/README.md", "lab:vm/scenario.c", "lab:vm/fluent-bit/sysmon_to_lab.lua"]));
+    expect(src("validator")).toContain("lab:lab/vm_validate.py");
+    expect(src("trigger")).toContain("sdp:scripts/lab-vm-provision.sh");
+    expect(src("timer")).toContain("sdp:scripts/lab-vm-provision.sh");
+    expect(src("detector")).toEqual(expect.arrayContaining(["sdp:siem/monitors/lab-polymorphic-beacon.json", "sdp:siem/detectors/lab.yaml"]));
+    expect(src("api")).toEqual(["sdp:app/api/internal/lab/", "sdp:app/api/internal/labrun/"]);
+    expect(src("page")).toContain("lab:web/");
+    // The way in: the targets /cluster/'s diagram uses.
+    expect(src("edge")).toEqual(["sdp:docs/adr/0003-cloudflare-tunnel-exposure.md"]);
+    expect(src("cloudflared")).toEqual(["sdp:cluster/infra/cloudflared/"]);
+    expect(src("gateway")).toContain("sdp:cluster/infra/gateway/");
+  });
+
+  it("a caption is text and links, no markup from the model", () => {
+    const vm = NODES.find((n) => n.id === "vm");
+    if (!vm) throw new Error("no vm");
+    const el = renderCaption(vm);
+    expect(el.querySelector(".ld-caption__text")?.textContent).toBe(vm.blurb);
+    const links = [...el.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    expect(links).toEqual(vm.sources.map(sourceUrl));
+    expect(el.querySelector("script")).toBeNull();
+  });
+});
+
+describe("the run lights its path", () => {
+  it("at rest nothing is lit; a queued run lights the trigger's poll; each later phase adds to the one before; the validated run lights the whole path", () => {
+    expect(phaseOf("idle").nodes.size).toBe(0);
+    expect(phaseOf("queued").nodes.get("trigger")).toBe("run");
+    expect(phaseOf("queued").edges.get("trigger-edge")).toBe("run");
+    // Once the VM is starting, the page cannot tell the timer's run from a visitor's: neither is lit.
+    expect(phaseOf("starting").nodes.has("trigger")).toBe(false);
+    expect(phaseOf("starting").nodes.has("timer")).toBe(false);
+    const order = ["starting", "running", "shipped"] as const;
+    let before = new Set<string>();
+    for (const p of order) {
+      const lit = new Set(phaseOf(p).nodes.keys());
+      for (const id of before) expect(lit.has(id), `${p} keeps ${id}`).toBe(true);
+      expect(lit.size).toBeGreaterThan(before.size);
+      before = lit;
+    }
+    expect(phaseOf("running").nodes.get("vm")).toBe("run");
+    expect(phaseOf("running").edges.get("vm-stream")).toBe("record");
+    expect(phaseOf("shipped").nodes.get("detector")).toBe("detect");
+    const done = phaseOf("validated");
+    for (const s of RUN_PATH) expect(done.nodes.get(s.node)).toBe(s.state);
+    for (const e of RUN_PATH.flatMap((s) => (s.edge ? [s.edge] : []))) expect(EDGES.some((x) => `${x.from}-${x.to}` === e), e).toBe(true);
+  });
+
+  it("the traffic's stylesheet routes a dot per lane in both drawings", () => {
+    const css = trafficCss();
+    for (const p of ["ld", "ldn"]) for (const l of Object.keys(TRAFFIC)) expect(css).toMatch(new RegExp(`#${p}-dot-${l} \\{ offset-path: path\\("M[\\d. L]+"\\); --tr-name: ld-tr-${p}-${l}; --tr-period: [\\d.]+s; \\}`));
+    for (const l of Object.keys(TRAFFIC) as (keyof typeof TRAFFIC)[]) for (const id of TRAFFIC[l].edges) expect(EDGES.some((e) => `${e.from}-${e.to}` === id), id).toBe(true);
   });
 });

@@ -328,3 +328,101 @@ const VM_RUN = {
       findings: [] },
   ],
 } as const;
+
+// The hero's architecture diagram, as /cluster/'s (src/ui/diagram.ts): nodes open a caption with links to
+// the code, the way in carries a dot at rest, a live run lights its path, a validated run replays it,
+// and nothing moves under reduced motion.
+test.describe("the hero diagram", () => {
+  const view = (project: string) => (project === "phone" ? "narrow" : "wide");
+  const run = readFileSync(new URL("./fixtures/vm-run-real.json", import.meta.url), "utf8");
+  const partial = readFileSync(new URL("./fixtures/vm-raw-partial-real.json", import.meta.url), "utf8");
+
+  test("sits in the hero, above the run panel", async ({ page }) => {
+    await page.goto("/lab/");
+    const fig = await page.locator("#top #lab-diagram").boundingBox();
+    const panel = await page.locator("#lab-panel").boundingBox();
+    expect(fig && panel && fig.y + fig.height <= panel.y).toBe(true);
+  });
+
+  test("a node opens its caption by click and by keyboard, with links to where it lives; Escape and × close it", async ({ page }, info) => {
+    await page.goto("/lab/");
+    const svg = page.locator(`.lab-diagram__svg--${view(info.project.name)}`);
+    const caption = page.locator("#lab-diagram-caption");
+    await expect(caption).toBeHidden();
+    const vm = svg.locator('.ld-node[data-node="vm"]');
+    await vm.click();
+    await expect(caption).toBeVisible();
+    await expect(vm).toHaveAttribute("aria-expanded", "true");
+    await expect(caption).toContainText("Sysmon for Linux records what the kernel saw");
+    const hrefs = await caption.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+    expect(hrefs).toEqual([
+      "https://github.com/HubertMJ/detection-lab/tree/main/vm/README.md",
+      "https://github.com/HubertMJ/detection-lab/tree/main/vm/scenario.c",
+      "https://github.com/HubertMJ/detection-lab/tree/main/vm/run_scenario.py",
+      "https://github.com/HubertMJ/detection-lab/tree/main/vm/fluent-bit/sysmon_to_lab.lua",
+    ]);
+    // Keyboard: Enter opens the focused node, Escape closes it, Space opens it again.
+    const validator = svg.locator('.ld-node[data-node="validator"]');
+    await validator.focus();
+    await page.keyboard.press("Enter");
+    await expect(caption).toContainText("lines the findings and the alert up against the run's ground truth");
+    await expect(caption.locator('a[href="https://github.com/HubertMJ/detection-lab/tree/main/lab/vm_validate.py"]')).toHaveCount(1);
+    await expect(vm).toHaveAttribute("aria-expanded", "false");
+    await page.keyboard.press("Escape");
+    await expect(caption).toBeHidden();
+    await page.keyboard.press(" ");
+    await expect(caption).toBeVisible();
+    await caption.locator(".ld-caption__close").click();
+    await expect(caption).toBeHidden();
+    await expect(validator).toBeFocused();
+    // The trigger points at the provisioning script; the way in at the targets /cluster/'s diagram uses.
+    await svg.locator('.ld-node[data-node="trigger"]').click();
+    await expect(caption.locator('a[href="https://github.com/HubertMJ/self-defending-portfolio/tree/main/scripts/lab-vm-provision.sh"]')).toHaveCount(1);
+    await svg.locator('.ld-node[data-node="cloudflared"]').click();
+    await expect(caption.locator('a[href="https://github.com/HubertMJ/self-defending-portfolio/tree/main/cluster/infra/cloudflared/"]')).toHaveCount(1);
+  });
+
+  test("at rest a dot runs the way in; under reduced motion nothing moves", async ({ page }, info) => {
+    const sel = `.lab-diagram__svg--${view(info.project.name)} .ld-dot--in`;
+    await page.goto("/lab/");
+    await expect.poll(() => page.locator(sel).evaluate((d) => d.getAnimations().map((a) => a.playState).join())).toBe("running");
+    expect(await page.locator(`.lab-diagram__svg--${view(info.project.name)} .ld-glow--in`).count()).toBe(4);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    const moving = page.locator(".ld-dot, .ld-glow");
+    expect(await moving.evaluateAll((els) => els.map((e) => `${getComputedStyle(e).display}:${e.getAnimations().length}`))).toEqual(Array(await moving.count()).fill("none:0"));
+  });
+
+  test("a live run lights its path in step with the VM, and its dot runs the run's path", async ({ page }, info) => {
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    await page.route("**/cluster/api/lab/vm", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "running", last_restore: "2026-10-20T06:56:24Z", snapshot_clean: true }) }));
+    await page.route("**/cluster/api/lab/raw", (r) => r.fulfill({ status: 200, contentType: "application/json", body: partial }));
+    await page.route("**/cluster/api/lab/run", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "running", can_start: false }) }));
+    await page.goto("/lab/");
+    await expect(page.locator("#lab-diagram")).toHaveAttribute("data-run", "active", { timeout: 15000 });
+    const svg = page.locator(`.lab-diagram__svg--${view(info.project.name)}`);
+    await expect(svg.locator('.ld-node[data-node="vm"]')).toHaveAttribute("data-state", "run");
+    await expect(svg.locator('.ld-node[data-node="stream"]')).toHaveAttribute("data-state", "record");
+    await expect(svg.locator('.ld-edge[data-edge="vm-stream"]')).toHaveAttribute("data-lit", "true");
+    await expect(svg.locator('.ld-node[data-node="detector"]')).toHaveAttribute("data-state", "idle");
+    await expect(page.locator("#lab-diagram-status")).toContainText("Live run: the VM is running the four copies");
+    await expect.poll(() => svg.locator(".ld-dot--run").evaluate((d) => d.getAnimations().length)).toBe(1);
+    expect(await svg.locator(".ld-dot--in").evaluate((d) => getComputedStyle(d).display)).toBe("none");
+  });
+
+  test("a validated run replays its path once, then rests; under reduced motion it is lit at once", async ({ page }, info) => {
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    await page.route("**/cluster/api/lab/vm", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "off" }) }));
+    await page.goto("/lab/");
+    const svg = page.locator(`.lab-diagram__svg--${view(info.project.name)}`);
+    await expect(svg.locator('.ld-node[data-node="vm"]')).toHaveAttribute("data-state", "run");
+    await expect(svg.locator('.ld-node[data-node="page"]')).toHaveAttribute("data-state", "deliver");
+    await expect(page.locator("#lab-diagram-status")).toContainText("Latest run: validated");
+    await expect(svg.locator('.ld-node[data-node="page"]')).toHaveAttribute("data-state", "idle", { timeout: 10000 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    await expect(svg.locator('.ld-node[data-node="runs"]')).toHaveAttribute("data-state", "record");
+    // All of it at once: no step still to come.
+    for (const id of ["vm", "stream", "detector", "validator", "runs", "api", "page"]) await expect(svg.locator(`.ld-node[data-node="${id}"]`)).not.toHaveAttribute("data-state", "idle");
+  });
+});

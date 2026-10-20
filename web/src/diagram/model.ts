@@ -29,8 +29,24 @@ export interface LabNode {
   sub: string;
   zone: string;
   role: Role;
+  /** One or two sentences for the caption the node opens (ui/diagram.ts). */
+  blurb: string;
+  /** Where it lives: "lab:<path>" in this repository, "sdp:<path>" in self-defending-portfolio. */
+  sources: string[];
   /** Wide drawing: [col, row]. */
   at: [number, number];
+}
+
+/** The two repositories a node's sources point into. */
+export const REPOS = {
+  lab: "https://github.com/HubertMJ/detection-lab",
+  sdp: "https://github.com/HubertMJ/self-defending-portfolio",
+} as const;
+
+/** A source's GitHub address (the default branch; a file or a directory). */
+export function sourceUrl(src: string): string {
+  const [repo, ...rest] = src.split(":");
+  return `${REPOS[repo as keyof typeof REPOS]}/tree/main/${rest.join(":")}`;
 }
 
 /** auto: straight when the two share a row or column; hv/vh: one bend; over: up, across above the row, down into b. */
@@ -59,25 +75,25 @@ export const ZONES: Zone[] = [
 
 export const NODES: LabNode[] = [
   // ---- the way in, as on the landing page and /cluster/ ----
-  { id: "visitor", label: "Visitor", sub: "browser", zone: "internet", role: "entry", at: [0, 0] },
-  { id: "edge", label: "Cloudflare edge", sub: "TLS · WAF", zone: "internet", role: "entry", at: [1, 0] },
-  { id: "cloudflared", label: "cloudflared ×2", sub: "no inbound port", zone: "k3s", role: "entry", at: [2, 0] },
-  { id: "gateway", label: "Cilium Gateway", sub: "routes by path", zone: "k3s", role: "entry", at: [3, 0] },
-  { id: "page", label: "/lab/ page", sub: "the replay · Start run now", zone: "k3s", role: "entry", at: [4, 0] },
-  { id: "api", label: "Cluster API", sub: "/cluster/api/lab/ · latest · vm · raw · run", zone: "k3s", role: "entry", at: [5, 0] },
+  { id: "visitor", label: "Visitor", sub: "browser", zone: "internet", role: "entry", blurb: "You. This page, its run data and the Start run now button all come in the same way: over HTTPS to Cloudflare.", sources: [], at: [0, 0] },
+  { id: "edge", label: "Cloudflare edge", sub: "TLS · WAF", zone: "internet", role: "entry", blurb: "Cloudflare terminates TLS and filters with its WAF; nothing reaches the cluster any other way: the tunnel is dialled from inside.", sources: ["sdp:docs/adr/0003-cloudflare-tunnel-exposure.md"], at: [1, 0] },
+  { id: "cloudflared", label: "cloudflared ×2", sub: "no inbound port", zone: "k3s", role: "entry", blurb: "The tunnel is dialled from inside the VM; nothing listens for the internet. Cloudflare's requests ride back along it. Two replicas, so a rolling update never takes the site down.", sources: ["sdp:cluster/infra/cloudflared/"], at: [2, 0] },
+  { id: "gateway", label: "Cilium Gateway", sub: "routes by path", zone: "k3s", role: "entry", blurb: "Cilium's Envoy terminates TLS again inside the cluster, adds the security headers and routes by path: /lab/ to this page's image, /cluster/api to the API.", sources: ["sdp:cluster/infra/gateway/", "sdp:cluster/infra/lab/httproute.yaml"], at: [3, 0] },
+  { id: "page", label: "/lab/ page", sub: "the replay · Start run now", zone: "k3s", role: "entry", blurb: "This page: a static, signed nginx image built in this repository. It draws the latest run, follows a live one, and its Start run now button asks the API for a run.", sources: ["lab:web/", "sdp:cluster/infra/lab/"], at: [4, 0] },
+  { id: "api", label: "Cluster API", sub: "/cluster/api/lab/ · latest · vm · raw · run", zone: "k3s", role: "entry", blurb: "The cluster's Go API serves the lab read-only: the latest run document, the VM's state and a live run's raw records; it queues a visitor's run request for the trigger to collect, one at a time and within daily limits.", sources: ["sdp:app/api/internal/lab/", "sdp:app/api/internal/labrun/"], at: [5, 0] },
   // ---- variant A, in the cluster ----
-  { id: "runner", label: "lab-runner CronJob", sub: "variant A · 03:30 UTC", zone: "k3s", role: "neutral", at: [3, 1] },
+  { id: "runner", label: "lab-runner CronJob", sub: "variant A · 03:30 UTC", zone: "k3s", role: "neutral", blurb: "Variant A: a daily CronJob runs run.py, which writes synthetic events with a known ground truth into the SIEM, waits for its rules and writes the run document. Nothing is executed.", sources: ["lab:lab/run.py", "lab:runner/", "sdp:cluster/infra/lab/cronjob.yaml"], at: [3, 1] },
   // ---- siem01: the stream, the detections, the run document ----
-  { id: "stream", label: "sdp-lab stream", sub: "OpenSearch · append-only", zone: "siem", role: "record", at: [3, 2.3] },
-  { id: "detector", label: "Detector + monitor", sub: "Security Analytics · beacon monitor", zone: "siem", role: "detect", at: [4, 3.3] },
-  { id: "validator", label: "Validator", sub: "lab-validator timer · every 5 min", zone: "siem", role: "record", at: [5, 3.3] },
-  { id: "runs", label: "lab-runs", sub: "run documents", zone: "siem", role: "record", at: [5, 2.3] },
-  { id: "sink", label: "lab-sink", sub: ":8080 · beacon sink", zone: "siem", role: "neutral", at: [3, 3.3] },
+  { id: "stream", label: "sdp-lab stream", sub: "OpenSearch · append-only", zone: "siem", role: "record", blurb: "The sdp-lab data stream on siem01: every event of a run, Sysmon's and the lifecycle markers, append-only, in the lab's own field contract.", sources: ["sdp:siem/fields/lab.yaml", "sdp:siem/log-types/lab.yaml"], at: [3, 2.3] },
+  { id: "detector", label: "Detector + monitor", sub: "Security Analytics · beacon monitor", zone: "siem", role: "detect", blurb: "Security Analytics runs the lab's Sigma rules (a known hash, a persistence unit from /tmp); the Alerting monitor scores the beacon per address and opens one incident however the copies are named.", sources: ["sdp:siem/detectors/lab.yaml", "sdp:siem/rules/ioc-lab-known-hash.yml", "sdp:siem/rules/lab-persistence-user-unit-from-tmp.yml", "sdp:siem/monitors/lab-polymorphic-beacon.json"], at: [4, 3.3] },
+  { id: "validator", label: "Validator", sub: "lab-validator timer · every 5 min", zone: "siem", role: "record", blurb: "Every 5 minutes a timer on siem01 looks for a finished VM run it has not judged: it lines the findings and the alert up against the run's ground truth and writes the run document, once.", sources: ["lab:lab/vm_validate.py", "lab:lab/run.py", "sdp:ansible/roles/lab_validator/"], at: [5, 3.3] },
+  { id: "runs", label: "lab-runs", sub: "run documents", zone: "siem", role: "record", blurb: "The lab-runs index: one run document per run, the shape this page draws. The API reads it, never writes it.", sources: ["sdp:ansible/roles/opensearch_config/files/lab-runs.json"], at: [5, 2.3] },
+  { id: "sink", label: "lab-sink", sub: ":8080 · beacon sink", zone: "siem", role: "neutral", blurb: "A socket on siem01 the copies beacon to: it accepts and closes, so the network events are real and nothing leaves the lab.", sources: ["sdp:ansible/roles/lab_sink/"], at: [3, 3.3] },
   // ---- the Proxmox host: what starts a run, and the VM it runs on ----
-  { id: "trigger", label: "Run-now trigger", sub: "every 15 s · outbound only", zone: "pve", role: "neutral", at: [1, 2.3] },
-  { id: "timer", label: "lab-vm-run timer", sub: "daily 03:00 UTC", zone: "pve", role: "neutral", at: [0, 3.3] },
-  { id: "reset", label: "Reset and start", sub: "rollback to lab-clean · markers", zone: "pve", role: "neutral", at: [1, 3.3] },
-  { id: "vm", label: "lab-vm", sub: "VM 122 · Sysmon for Linux · Fluent Bit", zone: "lab", role: "attack", at: [2, 3.3] },
+  { id: "trigger", label: "Run-now trigger", sub: "every 15 s · outbound only", zone: "pve", role: "neutral", blurb: "Start run now, collected: every 15 s the Proxmox host asks the API, over the public way in, whether a visitor's run is waiting. Outbound only; nothing on the host listens.", sources: ["sdp:scripts/lab-vm-provision.sh"], at: [1, 2.3] },
+  { id: "timer", label: "lab-vm-run timer", sub: "daily 03:00 UTC", zone: "pve", role: "neutral", blurb: "A systemd timer on the Proxmox host starts the daily run at 03:00 UTC.", sources: ["sdp:scripts/lab-vm-provision.sh"], at: [0, 3.3] },
+  { id: "reset", label: "Reset and start", sub: "rollback to lab-clean · markers", zone: "pve", role: "neutral", blurb: "Every run starts identical: the VM is rolled back to its clean snapshot, started, and handed the run's lifecycle markers.", sources: ["sdp:scripts/lab-vm-provision.sh"], at: [1, 3.3] },
+  { id: "vm", label: "lab-vm", sub: "VM 122 · Sysmon for Linux · Fluent Bit", zone: "lab", role: "attack", blurb: "The isolated VM runs four renamed copies of a harmless test program; Sysmon for Linux records what the kernel saw, Fluent Bit maps it to the lab's fields and ships it over mutual TLS, then the VM powers off. Its firewall lets it reach siem01 and nothing else.", sources: ["lab:vm/README.md", "lab:vm/scenario.c", "lab:vm/run_scenario.py", "lab:vm/fluent-bit/sysmon_to_lab.lua"], at: [2, 3.3] },
 ];
 
 export const EDGES: LabEdge[] = [
@@ -102,10 +118,11 @@ export const EDGES: LabEdge[] = [
   { from: "runs", to: "api", label: "read-only", kind: "flow" },
 ];
 
-/** The phone's drawing: every node top to bottom, in this order. */
+/** The phone's drawing, top to bottom: the way in and the real run. The CronJob and the beacon sink
+ * are left to the wide drawing (and the README), as /cluster/'s phone leaves out the unguarded twin. */
 export const NARROW: string[] = [
-  "visitor", "edge", "cloudflared", "gateway", "page", "api", "runner",
-  "stream", "detector", "validator", "runs", "sink", "trigger", "timer", "reset", "vm",
+  "visitor", "edge", "cloudflared", "gateway", "page", "api",
+  "stream", "detector", "validator", "runs", "trigger", "timer", "reset", "vm",
 ];
 
 export const TITLE = "How a run reaches this page";
@@ -126,7 +143,7 @@ export function describe(): string {
   );
 }
 
-/** The model's problems: unknown zones or nodes, duplicates, a phone order that misses or repeats a node. */
+/** The model's problems: unknown zones or nodes, duplicates, a phone order with an unknown or repeated node, a node without words. */
 export function validate(): string[] {
   const out: string[] = [];
   const ids = new Set<string>();
@@ -134,8 +151,10 @@ export function validate(): string[] {
     if (ids.has(n.id)) out.push(`duplicate node ${n.id}`);
     ids.add(n.id);
     if (!ZONES.some((z) => z.id === n.zone)) out.push(`node ${n.id}: unknown zone ${n.zone}`);
+    if (n.blurb.length < 20) out.push(`node ${n.id}: no blurb`);
+    for (const src of n.sources) if (!/^(lab|sdp):[\w./-]+$/.test(src)) out.push(`node ${n.id}: source ${src} is not lab:<path> or sdp:<path>`);
   }
   for (const e of EDGES) for (const end of [e.from, e.to]) if (!ids.has(end)) out.push(`edge ${e.from}->${e.to}: unknown node ${end}`);
-  if (NARROW.length !== ids.size || new Set(NARROW).size !== NARROW.length || NARROW.some((id) => !ids.has(id))) out.push("the phone order is not every node once");
+  if (new Set(NARROW).size !== NARROW.length || NARROW.some((id) => !ids.has(id))) out.push("the phone order repeats or names an unknown node");
   return out;
 }

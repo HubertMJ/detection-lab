@@ -10,12 +10,16 @@ import labReplay from "./lib/lab-replay.json";
 import { byId } from "./lib/dom";
 import { isLabRawRecords, isLabReplay, isLabRunControl, isLabVmStatus, type LabReplay, type LabRunControl, type LabVmStatus } from "./lib/lab";
 import { setupThemeToggle } from "./lib/theme-toggle";
+import { mountDiagram, type RunPhase } from "./ui/diagram";
 import { mountLab } from "./ui/lab";
 import { replayFromRaw, updateRunControl } from "./ui/lab-live";
 import { mountLabVm, updateVmStatus } from "./ui/lab-vm";
 
 document.documentElement.classList.add("js");
 setupThemeToggle();
+
+// The hero's diagram: its nodes open a caption; the run's path lights from what this page polls.
+const diagram = mountDiagram(byId("lab-diagram"), { caption: byId("lab-diagram-caption"), status: byId("lab-diagram-status") });
 
 const LATEST = "/cluster/api/lab/latest";
 // The fetch is an upgrade, never a gate: the page renders the sample at once and must reach `load`
@@ -74,7 +78,23 @@ let liveCount = -1;
 const ACTIVE = new Set(["queued", "starting", "running"]);
 const busy = (): boolean => lastStatus?.state === "running" || ACTIVE.has(lastRun?.state ?? "") || liveRunId !== null;
 
+/** Where the run is, from the run control, the VM's state and the live records this page holds. */
+function phaseNow(): RunPhase {
+  if (lastStatus?.state === "running") return liveCount > 0 ? "running" : "starting";
+  if (lastRun?.state === "queued") return "queued";
+  if (lastRun?.state === "starting") return "starting";
+  if (lastRun?.state === "running") return "running";
+  if (liveRunId) return "shipped";
+  return "idle";
+}
+let shownPhase: RunPhase = "idle";
+
 function refresh(): void {
+  const phase = phaseNow();
+  if (phase !== shownPhase) {
+    shownPhase = phase;
+    diagram.setPhase(phase);
+  }
   const strip = document.getElementById("lab-vm-status");
   if (strip) updateVmStatus(strip, lastStatus, Math.max(0, Math.round((Date.now() - lastCheck) / 1000)));
   const ctl = document.getElementById("lab-run-control");
@@ -148,6 +168,9 @@ function showValidated(panel: HTMLElement, data: LabReplay): boolean {
   liveCount = -1;
   validated = data;
   mountLab(panel, data);
+  // The run's path, replayed once on the diagram (the phase is at rest again afterwards).
+  shownPhase = "idle";
+  if (!data.sample) diagram.replay();
   refresh();
   return true;
 }
