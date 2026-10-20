@@ -7,12 +7,19 @@
 
 import { h, replace } from "../lib/dom";
 import { type LabMode, type LabReplay, type LabState, type RiskEntity, coverage, isLabReplay, labState, shortHash } from "../lib/lab";
+import { mountLabVm } from "./lab-vm";
 
 const KIND_LABEL = { sigma: "Sigma rule", monitor: "Alerting monitor" } as const;
 
 export function mountLab(root: HTMLElement, data: unknown): void {
   if (!isLabReplay(data)) return; // the static text in #lab-body stays
   const d: LabReplay = data;
+  // A real run on the isolated VM (variant B) draws a different panel: the machine's timeline and its
+  // real evidence, not the synthetic replay the sample offers.
+  if (d.run?.mode === "isolated-vm") {
+    mountLabVm(root, d);
+    return;
+  }
   let ran = 1;
   let mode: LabMode = "renamed";
 

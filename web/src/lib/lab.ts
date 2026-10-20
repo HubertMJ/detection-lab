@@ -19,6 +19,8 @@ export interface LabFinding {
   rule: string;
   /** Seconds from the variant's start to the finding: the time to detect. */
   delay_s: number;
+  /** Variant B: the finding's time as an offset from the run's t0, for the replay feed. */
+  at_offset_s?: number;
   /** "same-name": the finding exists only while every copy keeps the first copy's name. */
   only?: "same-name";
 }
@@ -35,6 +37,26 @@ export interface LabVariant {
   events: Record<string, string | number>[];
   ground_truth: { "@timestamp": string; host: string; techniques: string[]; variant_sha256: string };
   findings: LabFinding[];
+  /** Variant B (isolated-vm): the real pid/ppid Sysmon saw, and whether the hash rule caught this copy. */
+  pid?: number;
+  ppid?: number;
+  caught_by_hash?: boolean;
+}
+
+/** Variant B (isolated-vm): one stage of the VM's run, as a second offset from the rollback (t0). */
+export interface LabLifecycle {
+  marker: string;
+  offset_s: number;
+  label: string;
+}
+
+/** Variant B (isolated-vm): run-level counts for the "it really ran" header. */
+export interface LabCounters {
+  processes: number;
+  unique_hashes: number;
+  events: number;
+  findings: number;
+  incidents: number;
 }
 
 /** A real run's provenance: present when the page drew a run, absent on the synthetic sample. */
@@ -44,6 +66,8 @@ export interface LabRun {
   mode: "generated" | "isolated-vm";
   started_at: string;
   finished_at: string;
+  /** Variant B: wall-clock seconds the VM was up for this run (rollback to power-off). */
+  duration_s?: number;
 }
 
 export interface LabReplay {
@@ -57,6 +81,52 @@ export interface LabReplay {
   risk_threshold: number;
   rules: LabRule[];
   variants: LabVariant[];
+  /** Variant B (isolated-vm): the VM's run as a timeline, and run-level counts. Absent for variant A. */
+  lifecycle?: LabLifecycle[];
+  counters?: LabCounters;
+  incident?: { opened_at_variant: number | null; delay_s: number | null; key: string; at_offset_s?: number };
+  /** Variant B: the last few runs, newest first, for the run-history dots. */
+  history?: LabHistoryRun[];
+}
+
+/** One past run, for the history dots. */
+export interface LabHistoryRun {
+  id: string;
+  finished_at: string;
+  duration_s?: number;
+  ok: boolean;
+}
+
+/** One run's records as siem01 indexed them, from GET /cluster/api/lab/raw (read-only). Nested as
+ * stored; only the fields the panel shows are typed. */
+export interface LabRawRecord {
+  "@timestamp": string;
+  event?: { code?: string; action?: string };
+  lab?: { run_id?: string; variant?: number; marker?: string };
+  [k: string]: unknown;
+}
+export interface LabRawRecords {
+  run_id: string;
+  records: LabRawRecord[];
+}
+
+export function isLabRawRecords(v: unknown): v is LabRawRecords {
+  return isObj(v) && isStr(v.run_id) && Array.isArray(v.records) && v.records.every((r) => isObj(r));
+}
+
+/** The isolated VM's live state, from GET /cluster/api/lab/vm (read-only). */
+export interface LabVmStatus {
+  state: "off" | "running";
+  last_restore?: string;
+  next_run?: string;
+  /** The newest run began with a rollback to the clean snapshot. */
+  snapshot_clean?: boolean;
+  last_run?: { id: string; started_at: string; finished_at?: string };
+  checked_at?: string;
+}
+
+export function isLabVmStatus(v: unknown): v is LabVmStatus {
+  return isObj(v) && (v.state === "off" || v.state === "running");
 }
 
 const isStr = (v: unknown): v is string => typeof v === "string" && v.length > 0;
