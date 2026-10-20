@@ -5,6 +5,7 @@
 // Nothing here runs by itself; it only renders the run document. Pure DOM building (no innerHTML).
 
 import { h } from "../lib/dom";
+import { runControl } from "./lab-live";
 import { isLabRawRecords, type LabRawRecords, type LabReplay, type LabVariant, type LabVmStatus, shortHash } from "../lib/lab";
 
 const RUN_DATE = new Intl.DateTimeFormat("en-GB", {
@@ -24,6 +25,13 @@ function path(p: string): string {
 
 /** Above the panel: a real run with its id, date and duration, or a clearly-marked sample. */
 function note(d: LabReplay): HTMLElement {
+  if (d.live && d.run) {
+    return h("p", { class: "lab-note" },
+      h("span", { class: "tag tag--detect" }, "Live"),
+      " · Running now on an isolated VM · started ",
+      h("time", { datetime: d.run.started_at }, RUN_TIME.format(new Date(d.run.started_at)) + " UTC"),
+      " · detections arrive from siem01 a few minutes after it ends");
+  }
   if (d.sample || !d.run) {
     return h("p", { class: "lab-note" },
       h("span", { class: "tag tag--arm" }, "Sample"),
@@ -132,6 +140,13 @@ function rawEvents(d: LabReplay, v: LabVariant): HTMLElement {
 }
 
 function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
+  if (v.pending) {
+    return h("article", { class: "lab-vm-copy lab-vm-copy--pending" },
+      h("header", { class: "lab-vm-copy__h" },
+        h("span", { class: "lab-vm-copy__n mono" }, "—"),
+        h("span", { class: "lab-vm-copy__c" }, `copy ${v.n}`)),
+      h("div", { class: "lab-vm-copy__b" }, h("p", { class: "lab-vm-copy__wait small" }, "Not started yet.")));
+  }
   const create = ev(v, "1");
   const file = ev(v, "11");
   const beacons = v.events.filter((e) => e["event.code"] === "3").length;
@@ -159,7 +174,8 @@ function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
       file ? kv("persistence", path(String(file["file.path"]))) : null,
       kv("beacons", beacons ? `${beacons}× → lab beacon :8080` : "—"),
       kv("detected", detectS === null ? "—" : `${detectS}s after start`)),
-    h("div", { class: "lab-vm-chips" },
+    // Live: no verdict per copy yet (detections come with the validated run), so no chips at all.
+    d.live ? null : h("div", { class: "lab-vm-chips" },
       chip(v.caught_by_hash ? "hit" : "miss", v.caught_by_hash ? "✓ known-hash" : "known-hash"),
       firedPersist ? chip("hit", "✓ persistence from /tmp") : null,
       firedBeacon ? chip(incidentHere ? "crit" : "hit", incidentHere ? "✓ beaconing → incident" : "✓ beaconing") : null),
@@ -171,6 +187,11 @@ function copies(d: LabReplay): HTMLElement {
 }
 
 function verdict(d: LabReplay): HTMLElement {
+  if (d.live) {
+    return h("div", { class: "lab-vm-verdict" },
+      h("div", { class: "lab-vm-tile" }, h("span", { class: "lab-vm-tile__n" }, "…"),
+        h("span", { class: "lab-vm-tile__c" }, "the rules' verdict appears when siem01 has judged this run, a few minutes after it ends")));
+  }
   const n = d.variants.length;
   const hashCaught = d.variants.filter((v) => v.caught_by_hash).length;
   const behaviour = d.variants.filter((v) => v.findings.some((f) => !f.rule.startsWith("ioc-"))).length;
@@ -301,11 +322,12 @@ function replay(d: LabReplay): HTMLElement | null {
   playBtn.addEventListener("click", () => (playing ? stop() : play()));
   scrub.addEventListener("input", () => { stop(); renderTo(Number(scrub.value) || 0); });
 
-  renderTo(reduce ? maxOff : 0);
-  if (!reduce) setTimeout(play, 400);
+  // Live (a run in progress): show everything so far, no animation, no controls to scrub.
+  renderTo(reduce || d.live ? maxOff : 0);
+  if (!reduce && !d.live) setTimeout(play, 400);
 
   const count = (n: HTMLElement, label: string) => h("div", { class: "lab-rp-c" }, n, h("span", { class: "lab-rp-c__l" }, label));
-  return h("section", { class: "lab-rp" },
+  return h("section", { class: d.live ? "lab-rp lab-rp--live" : "lab-rp" },
     h("div", { class: "lab-rp-bar" }, playBtn, h("label", { class: "lab-rp-speedwrap small" }, "speed ", speedSel),
       scrub, clock),
     h("div", { class: "lab-rp-counts" }, count(cProc, "processes"), count(cEv, "events"), count(cDet, "detections"), count(cInc, "incidents")),
@@ -321,6 +343,7 @@ export function mountLabVm(root: HTMLElement, d: LabReplay): void {
     h("div", { class: "lab lab-vm" },
       note(d),
       statusStrip(),
+      runControl(),
       history(d),
       h("h3", { class: "panel-title" }, "Watch the run"),
       replay(d),

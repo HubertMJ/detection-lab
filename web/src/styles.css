@@ -1916,3 +1916,11 @@ html.slide-out-backward body > :not(.site-header) {
   stroke-width: 4px;
   stroke-linejoin: round;
 }
+/* "Start run now" (variant B on demand) and the live view of a run in progress. */
+.lab-run { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; margin: 0 0 1rem; }
+.lab-run__msg { color: var(--text-muted); }
+.lab-run__btn:disabled { opacity: 0.55; cursor: default; }
+.lab-run[data-state="running"] .lab-run__msg, .lab-run[data-state="starting"] .lab-run__msg { color: var(--good); }
+.lab-rp--live .lab-rp-bar { display: none; }
+.lab-vm-copy--pending { opacity: 0.6; }
+.lab-vm-copy__wait { margin: 0; padding: 0.85rem; color: var(--text-muted); }

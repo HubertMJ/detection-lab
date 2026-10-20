@@ -129,6 +129,65 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(page.locator(".lab-vm-raw summary").first()).toContainText("as indexed in sdp-lab");
   });
 
+  // "Start run now": the button POSTs a request (the API only queues it), refusals read in plain words,
+  // and while the VM runs the page draws the run live from its raw records (no verdict yet).
+  test("Start run now: queues a run, explains refusals, follows a run live", async ({ page }) => {
+    const run = readFileSync(new URL("./fixtures/vm-run-real.json", import.meta.url), "utf8");
+    const partial = readFileSync(new URL("./fixtures/vm-raw-partial-real.json", import.meta.url), "utf8");
+    let vmState = "off";
+    let posts = 0;
+    let postStatus = 202;
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    await page.route("**/cluster/api/lab/vm", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: vmState, last_restore: "2026-10-20T06:56:24Z", snapshot_clean: true, next_run: "2026-10-21T03:00:00Z" }) }));
+    await page.route("**/cluster/api/lab/raw", (r) => r.fulfill({ status: 200, contentType: "application/json", body: partial }));
+    await page.route("**/cluster/api/lab/run", (r) => {
+      if (r.request().method() === "POST") {
+        posts++;
+        return r.fulfill({ status: postStatus, contentType: "application/json", body: JSON.stringify(postStatus === 202 ? { id: "r1", state: "queued" } : { error: "cooldown" }) });
+      }
+      return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(vmState === "running"
+        ? { state: "running", can_start: false, runs_today: 3, max_per_day: 12 }
+        : { state: "available", can_start: true, runs_today: 2, max_per_day: 12 }) });
+    });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/lab/");
+    const btn = page.locator(".lab-run__btn");
+    await expect(btn).toBeEnabled();
+    await expect(page.locator(".lab-run__msg")).toContainText("10 of 12 runs left today");
+    await btn.scrollIntoViewIfNeeded(); // Playwright scrolls to what it clicks; measure after that
+    const y = await page.evaluate(() => window.scrollY);
+    await btn.click();
+    await expect(page.locator(".lab-run__msg")).toContainText("queued");
+    expect(posts).toBe(1);
+    expect(await page.evaluate(() => window.scrollY)).toBe(y); // clicking never scrolls the page
+    // the VM starts: the panel follows the run live from its raw records
+    vmState = "running";
+    await expect(page.locator(".lab-note")).toContainText("Running now on an isolated VM", { timeout: 15000 });
+    await expect(page.locator(".lab-vm-copy")).toHaveCount(4);
+    await expect(page.locator(".lab-vm-chips")).toHaveCount(0);
+    await expect(page.locator(".lab-run__btn")).toBeDisabled();
+  });
+
+  test("Start run now: a refused request says why", async ({ page }) => {
+    const run = readFileSync(new URL("./fixtures/vm-run-real.json", import.meta.url), "utf8");
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    await page.route("**/cluster/api/lab/vm", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "off" }) }));
+    await page.route("**/cluster/api/lab/run", (r) => r.request().method() === "POST"
+      ? r.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ error: "daily limit" }) })
+      : r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "available", can_start: true }) }));
+    await page.goto("/lab/");
+    await page.locator(".lab-run__btn").click();
+    await expect(page.locator(".lab-run__msg")).toContainText("Today's runs are used up");
+  });
+
+  test("Start run now is hidden without the run endpoint", async ({ page }) => {
+    const run = readFileSync(new URL("./fixtures/vm-run-real.json", import.meta.url), "utf8");
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    await page.goto("/lab/");
+    await expect(page.locator(".lab-vm-copy").first()).toBeVisible();
+    await expect(page.locator(".lab-run")).toBeHidden();
+  });
+
   // No endpoint (the standalone image): the page falls back to the bundled synthetic sample, labelled
   // as generated, and still renders the whole preview.
   test("falls back to the bundled synthetic sample when the API 404s", async ({ page }) => {

@@ -41,6 +41,8 @@ export interface LabVariant {
   pid?: number;
   ppid?: number;
   caught_by_hash?: boolean;
+  /** Live view only: a copy that has not started yet (a placeholder, so the layout never jumps). */
+  pending?: boolean;
 }
 
 /** Variant B (isolated-vm): one stage of the VM's run, as a second offset from the rollback (t0). */
@@ -87,6 +89,9 @@ export interface LabReplay {
   incident?: { opened_at_variant: number | null; delay_s: number | null; key: string; at_offset_s?: number };
   /** Variant B: the last few runs, newest first, for the run-history dots. */
   history?: LabHistoryRun[];
+  /** Variant B, drawn while the VM is still running: built in the page from the raw records, with
+   * no detections yet (they arrive with the validated run document a few minutes later). */
+  live?: boolean;
 }
 
 /** One past run, for the history dots. */
@@ -112,6 +117,22 @@ export interface LabRawRecords {
 
 export function isLabRawRecords(v: unknown): v is LabRawRecords {
   return isObj(v) && isStr(v.run_id) && Array.isArray(v.records) && v.records.every((r) => isObj(r));
+}
+
+/** "Start run now": the on-demand run's state, from GET /cluster/api/lab/run. */
+export interface LabRunControl {
+  state: "available" | "queued" | "starting" | "running" | "cooldown" | "closed" | "unavailable";
+  can_start: boolean;
+  next_allowed_at?: string;
+  runs_today?: number;
+  max_per_day?: number;
+  request?: { id: string; requested_at: string; claimed_at?: string };
+  reason?: string;
+}
+
+const RUN_STATES = new Set(["available", "queued", "starting", "running", "cooldown", "closed", "unavailable"]);
+export function isLabRunControl(v: unknown): v is LabRunControl {
+  return isObj(v) && typeof v.state === "string" && RUN_STATES.has(v.state) && typeof v.can_start === "boolean";
 }
 
 /** The isolated VM's live state, from GET /cluster/api/lab/vm (read-only). */

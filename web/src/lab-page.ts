@@ -8,10 +8,11 @@
 
 import labReplay from "./lib/lab-replay.json";
 import { byId } from "./lib/dom";
-import { isLabReplay, isLabVmStatus, type LabVmStatus } from "./lib/lab";
+import { isLabRawRecords, isLabReplay, isLabRunControl, isLabVmStatus, type LabReplay, type LabRunControl, type LabVmStatus } from "./lib/lab";
 import { setupThemeToggle } from "./lib/theme-toggle";
 import { mountLab } from "./ui/lab";
-import { updateVmStatus } from "./ui/lab-vm";
+import { replayFromRaw, updateRunControl } from "./ui/lab-live";
+import { mountLabVm, updateVmStatus } from "./ui/lab-vm";
 
 document.documentElement.classList.add("js");
 setupThemeToggle();
@@ -39,12 +40,19 @@ async function fetchLatest(): Promise<unknown | null> {
 // The isolated VM's live state (read-only). The page polls it so the status strip and the "LIVE"
 // badge are real, never a mock-up; absent or slow, the strip simply reads "status unavailable".
 const VM_URL = "/cluster/api/lab/vm";
-async function fetchVm(): Promise<unknown | null> {
+
+// "Start run now" (GET/POST /cluster/api/lab/run) and the raw records of the run in progress
+// (GET /cluster/api/lab/raw). Same origin, read-only except the POST, which only queues a request.
+const RUN_URL = "/cluster/api/lab/run";
+const RAW_URL = "/cluster/api/lab/raw";
+async function fetchJson(url: string, init?: RequestInit): Promise<{ status: number; body: unknown } | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LATEST_TIMEOUT_MS);
   try {
-    const res = await fetch(VM_URL, { headers: { accept: "application/json" }, signal: controller.signal });
-    return res.ok ? ((await res.json()) as unknown) : null;
+    const res = await fetch(url, { headers: { accept: "application/json" }, signal: controller.signal, ...init });
+    let body: unknown = null;
+    try { body = await res.json(); } catch { body = null; }
+    return { status: res.status, body };
   } catch {
     return null;
   } finally {
@@ -52,37 +60,94 @@ async function fetchVm(): Promise<unknown | null> {
   }
 }
 
-let vmPoll: number | undefined;
+let polling = false;
 let lastStatus: LabVmStatus | null = null;
+let lastRun: LabRunControl | null = null;
+let runNote: string | undefined;
 let lastCheck = 0;
-let followed = false;
+/** The last validated run on screen (the base a live view borrows its scenario and rules from). */
+let validated: LabReplay | null = null;
+/** While the VM runs a run that has no validated document yet: its id and how many records we drew. */
+let liveRunId: string | null = null;
+let liveCount = -1;
 
-/** Poll the VM status every 30 s (and tick "checked Ns ago" each second). When the VM is running a
- * run, flip the badge to LIVE and re-fetch the latest run once, so the page follows the 03:00 run. */
-function startVmPolling(reload: () => void): void {
-  if (vmPoll !== undefined) return; // one poller for the life of the page
-  const refresh = (): void => {
-    const strip = document.getElementById("lab-vm-status");
-    if (strip) updateVmStatus(strip, lastStatus, Math.max(0, Math.round((Date.now() - lastCheck) / 1000)));
-  };
-  const poll = async (): Promise<void> => {
-    const data = await fetchVm();
-    lastStatus = isLabVmStatus(data) ? data : null;
+const ACTIVE = new Set(["queued", "starting", "running"]);
+const busy = (): boolean => lastStatus?.state === "running" || ACTIVE.has(lastRun?.state ?? "") || liveRunId !== null;
+
+function refresh(): void {
+  const strip = document.getElementById("lab-vm-status");
+  if (strip) updateVmStatus(strip, lastStatus, Math.max(0, Math.round((Date.now() - lastCheck) / 1000)));
+  const ctl = document.getElementById("lab-run-control");
+  if (ctl) updateRunControl(ctl, lastRun, Date.now(), runNote);
+}
+
+/** What a refused POST says, in the page's words. */
+function refusal(status: number, body: unknown): string {
+  const err = typeof body === "object" && body !== null ? String((body as { error?: unknown }).error ?? "") : "";
+  if (status === 409) return "A run is already queued or running.";
+  if (status === 429 && err === "daily limit") return "Today's runs are used up; try again tomorrow.";
+  if (status === 429 && err === "visitor limit") return "You have started your runs for today; others can still start one.";
+  if (status === 429 && err === "too many requests") return "Too many clicks; wait a moment.";
+  if (status === 429) return "The VM rests between runs; try again in a few minutes.";
+  if (status === 423) return "The daily runs are on now; try again a little later.";
+  return "The run could not be started right now.";
+}
+
+/** Poll the VM, the run control and - while a run is in progress - its raw records: every 5 s while
+ * something is happening, every 30 s otherwise. A run in progress is drawn live from its records;
+ * once it has powered off, the page waits for its validated document and swaps it in. */
+function startVmPolling(panel: HTMLElement, reload: () => void): void {
+  if (polling) return; // one poller for the life of the page
+  polling = true;
+  const tick = async (): Promise<void> => {
+    const [vm, run] = await Promise.all([fetchJson(VM_URL), fetchJson(RUN_URL)]);
+    lastStatus = vm && vm.status === 200 && isLabVmStatus(vm.body) ? vm.body : null;
+    lastRun = run && run.status === 200 && isLabRunControl(run.body) ? run.body : null;
     lastCheck = Date.now();
-    refresh();
-    if (lastStatus?.state === "running") {
+    if (lastStatus?.state === "running" && validated) {
       byId("lab-eyebrow").textContent = "Detection lab · LIVE";
-      if (!followed) {
-        followed = true;
-        reload();
+      const raw = await fetchJson(RAW_URL);
+      if (raw && raw.status === 200 && isLabRawRecords(raw.body) && raw.body.run_id !== validated.run?.id &&
+          (raw.body.run_id !== liveRunId || raw.body.records.length !== liveCount)) {
+        const d = replayFromRaw(raw.body, validated, Date.now());
+        if (d) {
+          liveRunId = raw.body.run_id;
+          liveCount = raw.body.records.length;
+          mountLabVm(panel, d);
+        }
       }
-    } else {
-      followed = false;
+    } else if (liveRunId) {
+      reload(); // powered off: fetch the latest run until it is this one, validated
     }
+    refresh();
+    window.setTimeout(() => void tick(), busy() ? 5000 : 30000);
   };
-  void poll();
-  vmPoll = window.setInterval(() => void poll(), 30000);
+  // The button lives inside the panel, which is redrawn: listen once, on the panel.
+  panel.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".lab-run__btn");
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    void fetchJson(RUN_URL, { method: "POST" }).then((res) => {
+      runNote = !res ? "The run could not be started right now." : res.status === 202 ? undefined : refusal(res.status, res.body);
+      if (res && res.status === 202) lastRun = { state: "queued", can_start: false };
+      refresh();
+      window.setTimeout(() => { runNote = undefined; }, 15000);
+      window.setTimeout(() => void tick(), 1500);
+    });
+  });
+  void tick();
   window.setInterval(refresh, 1000);
+}
+
+/** The latest validated run arrived: draw it, unless a live run is on screen and this is not it yet. */
+function showValidated(panel: HTMLElement, data: LabReplay): boolean {
+  if (liveRunId && data.run?.id !== liveRunId) return false;
+  liveRunId = null;
+  liveCount = -1;
+  validated = data;
+  mountLab(panel, data);
+  refresh();
+  return true;
 }
 
 // The static hero describes the bundled sample ("design preview", "not a run on real machines").
@@ -121,7 +186,7 @@ function heroVm(real: boolean): void {
   const strong = document.createElement("strong");
   strong.textContent = "and a new name";
   lead.append(strong, real
-    ? "? This is the latest daily run on a real isolated VM: the Sysmon events it left, and what the SIEM made of them."
+    ? "? This is the latest run on a real isolated VM — daily, or started by a visitor below: the Sysmon events it left, and what the SIEM made of them."
     : "? Below is a sample of what a real isolated-VM run shows on this page — not a live run.");
   byId("lab-replay-eyebrow").textContent = real ? "Real run" : "Sample run";
   byId("lab-replay-lead").textContent =
@@ -166,12 +231,13 @@ function start(): void {
   const upgrade = (): void => {
     void fetchLatest().then((data) => {
       if (!isLabReplay(data)) return;
-      mountLab(panel, data);
       if (data.run?.mode === "isolated-vm") {
+        if (!showValidated(panel, data)) return;
         heroVm(!data.sample);
-        startVmPolling(upgrade);
-      } else if (!data.sample) {
-        heroLive();
+        startVmPolling(panel, upgrade);
+      } else {
+        mountLab(panel, data);
+        if (!data.sample) heroLive();
       }
     });
   };
