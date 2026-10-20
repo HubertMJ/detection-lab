@@ -104,8 +104,11 @@ function startVmPolling(panel: HTMLElement, reload: () => void): void {
     lastStatus = vm && vm.status === 200 && isLabVmStatus(vm.body) ? vm.body : null;
     lastRun = run && run.status === 200 && isLabRunControl(run.body) ? run.body : null;
     lastCheck = Date.now();
-    if (lastStatus?.state === "running" && validated) {
-      byId("lab-eyebrow").textContent = "Detection lab · LIVE";
+    const running = lastStatus?.state === "running";
+    // While the VM runs, and once more after it powered off (so the live view shows the end of the
+    // run until the validated document replaces it).
+    if ((running || liveRunId) && validated) {
+      if (running) byId("lab-eyebrow").textContent = "Detection lab · LIVE";
       const raw = await fetchJson(RAW_URL);
       if (raw && raw.status === 200 && isLabRawRecords(raw.body) && raw.body.run_id !== validated.run?.id &&
           (raw.body.run_id !== liveRunId || raw.body.records.length !== liveCount)) {
@@ -116,9 +119,8 @@ function startVmPolling(panel: HTMLElement, reload: () => void): void {
           mountLabVm(panel, d);
         }
       }
-    } else if (liveRunId) {
-      reload(); // powered off: fetch the latest run until it is this one, validated
     }
+    if (!running && liveRunId) reload(); // powered off: fetch the latest run until it is this one, validated
     refresh();
     window.setTimeout(() => void tick(), busy() ? 5000 : 30000);
   };
