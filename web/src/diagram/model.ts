@@ -60,7 +60,7 @@ export const NODES: LabNode[] = [
   { id: "stream", label: "sdp-lab stream", sub: "OpenSearch · append-only", zone: "siem", role: "record", at: [3, 1.3] },
   { id: "sink", label: "lab-sink", sub: ":8080 · beacon sink", zone: "siem", role: "neutral", at: [3, 2.3] },
   { id: "detector", label: "Detector + monitor", sub: "Security Analytics · beacon monitor", zone: "siem", role: "detect", at: [4, 1.3] },
-  { id: "validator", label: "Validator", sub: "lab-validator timer · 03:20 UTC", zone: "siem", role: "record", at: [4, 2.3] },
+  { id: "validator", label: "Validator", sub: "lab-validator timer · every 5 min", zone: "siem", role: "record", at: [4, 2.3] },
   { id: "runs", label: "lab-runs", sub: "run documents", zone: "siem", role: "record", at: [5, 2.3] },
   // ---- k3s01: variant A, and what the visitor reaches ----
   { id: "runner", label: "lab-runner CronJob", sub: "variant A · 03:30 UTC", zone: "k3s", role: "neutral", at: [3, 0] },
@@ -95,7 +95,7 @@ export function describe(): string {
     "outbound, rolls the isolated lab VM back to its clean snapshot and starts it. The VM runs four renamed " +
     "copies of a harmless test program; Sysmon for Linux records them and Fluent Bit ships the events over " +
     "mutual TLS to the sdp-lab stream on siem01, and the copies beacon to the lab sink there. The Security " +
-    "Analytics detector and the beacon monitor catch them, and at 03:20 UTC a validator lines the findings up " +
+    "Analytics detector and the beacon monitor catch them, and within minutes a validator (every 5 minutes) lines the findings up " +
     "against the ground truth and writes the run document to lab-runs. Variant A, a CronJob in the cluster at " +
     "03:30 UTC, writes synthetic events to the same stream. The cluster API serves the run read-only to this page."
   );

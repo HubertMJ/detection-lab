@@ -41,7 +41,7 @@ flowchart LR
         stream["sdp-lab stream<br/>OpenSearch · append-only"]
         sink["lab-sink<br/>:8080 · beacon sink"]
         detector["Detector + monitor<br/>Security Analytics · beacon monitor"]
-        validator["Validator<br/>lab-validator timer · 03:20 UTC"]
+        validator["Validator<br/>lab-validator timer · every 5 min"]
         runs["lab-runs<br/>run documents"]
     end
     timer -- "daily" --> reset
