@@ -175,8 +175,12 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(btn).toBeEnabled();
     await expect(page.locator(".lab-run__msg")).toContainText("10 of 12 runs left today");
     await btn.scrollIntoViewIfNeeded(); // Playwright scrolls to what it clicks; measure after that
+    // The page scrolls smoothly (scroll-behavior: smooth), so wait for that scroll to come to rest.
+    await page.waitForFunction(() => new Promise((ok) => { const a = scrollY; setTimeout(() => ok(scrollY === a), 300); }));
     const y = await page.evaluate(() => window.scrollY);
-    await btn.click();
+    // A DOM click: Playwright's own click scrolls the target to the centre first, which is not the
+    // page moving; this checks that the page itself never scrolls.
+    await btn.evaluate((b) => (b as HTMLButtonElement).click());
     await expect(page.locator(".lab-run__msg")).toContainText("queued");
     expect(posts).toBe(1);
     expect(await page.evaluate(() => window.scrollY)).toBe(y); // clicking never scrolls the page

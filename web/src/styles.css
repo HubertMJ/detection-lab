@@ -1805,6 +1805,10 @@ html.slide-out-backward body > :not(.site-header) {
 }
 
 /* ---- How a run reaches this page (src/diagram, inlined by the build): classes only, no style attributes ---- */
+/* Never a scroll anchor: the animated glows and dots inside it appear and disappear as a run moves on,
+   and Chrome's scroll anchoring would otherwise pick one and scroll the page to follow it. */
+.lab-diagram, .lab-diagram * { overflow-anchor: none; }
+
 .lab-diagram {
   margin: 1.5rem 0 0;
 }
@@ -1956,7 +1960,10 @@ html.slide-out-backward body > :not(.site-header) {
 }
 /* "Start run now" (variant B on demand) and the live view of a run in progress. */
 .lab-run { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; margin: 0 0 1rem; }
-.lab-run__msg { color: var(--text-muted); }
+.lab-run__msg { color: var(--text-muted); flex: 1 1 18rem; min-height: 3em; line-height: 1.5; display: flex; align-items: center; }
+/* The message changes with the state (queued, running, cooldown...): its box keeps the height of the
+   longest one, so the control never resizes and the page never moves when it changes. */
+@media (max-width: 640px) { .lab-run__msg { flex-basis: 100%; min-height: 4.5em; align-items: flex-start; } }
 .lab-run__btn:disabled { opacity: 0.55; cursor: default; }
 .lab-run[data-state="running"] .lab-run__msg, .lab-run[data-state="starting"] .lab-run__msg { color: var(--good); }
 .lab-rp--live .lab-rp-bar { display: none; }
