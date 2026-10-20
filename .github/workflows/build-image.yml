@@ -61,6 +61,12 @@ jobs:
           npx playwright install --with-deps chromium firefox
           npm run test:e2e
 
+      # The image's builder stage sees web/ alone (its Docker context), and runs lint + unit tests
+      # there: build it here too (not pushed), so a test that needs the rest of the repository fails
+      # in the pull request, not on main (as it did at 7a3d703).
+      - name: image builds from web/ alone (not pushed)
+        run: docker build --quiet --tag lab-pr-check .
+
       - name: upload playwright report
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

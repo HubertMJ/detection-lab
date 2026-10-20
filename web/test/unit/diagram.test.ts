@@ -108,10 +108,14 @@ describe("README.md's diagram is generated from the model", () => {
 
 describe("captions: every node says what it is and where it lives", () => {
   const repoRoot = join(process.cwd(), "..");
-  it("each source is a path in one of the two repositories; this repository's exist", () => {
+  // The image build tests web/ alone (its Docker context), so the rest of the repository is not there.
+  const fullRepo = existsSync(join(repoRoot, "lab")) && existsSync(join(repoRoot, "vm"));
+  it("each source is a path in one of the two repositories", () => {
+    for (const n of NODES) for (const src of n.sources) expect(src).toMatch(/^(lab|sdp):[\w./-]+$/);
+  });
+  it.skipIf(!fullRepo)("this repository's sources exist", () => {
     for (const n of NODES) {
       for (const src of n.sources) {
-        expect(src).toMatch(/^(lab|sdp):[\w./-]+$/);
         if (src.startsWith("lab:")) expect(existsSync(join(repoRoot, src.slice(4))), src).toBe(true);
       }
     }
