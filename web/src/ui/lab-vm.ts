@@ -5,6 +5,7 @@
 // Nothing here runs by itself; it only renders the run document. Pure DOM building (no innerHTML).
 
 import { h } from "../lib/dom";
+import { incidentStory } from "./lab-incident";
 import { runControl } from "./lab-live";
 import { isLabRawRecords, type LabRawRecords, type LabReplay, type LabVariant, type LabVmStatus, shortHash } from "../lib/lab";
 
@@ -358,6 +359,8 @@ export function mountLabVm(root: HTMLElement, d: LabReplay): void {
       h("h3", { class: "panel-title" }, "Four copies, four hashes, one behaviour"),
       copies(d),
       h("h3", { class: "panel-title" }, "What the rules caught"),
-      verdict(d)),
+      verdict(d),
+      d.live ? null : h("h3", { class: "panel-title" }, "How four copies became one incident"),
+      incidentStory(d)),
   );
 }

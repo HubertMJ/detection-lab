@@ -2153,4 +2153,67 @@ html.slide-out-backward body > :not(.site-header) {
 /* Without JavaScript the "pick a part" hint does nothing: hide it. */
 html:not(.js) .needs-js {
   display: none;
+/* "How four copies became one incident": the beacon monitor's story. Only classes change while it
+   plays (is-on, lab-inc--fired); every box keeps its size, so nothing on the page moves. */
+.lab-inc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
+.lab-inc > *, .lab-inc-stage > *, .lab-inc-join > * { min-width: 0; }
+.lab-inc-stage { position: relative; display: grid; gap: 0.9rem; }
+.lab-inc-copies { list-style: none; margin: 0; padding: 0 0 0 1.1rem; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem;
+  border-left: 3px solid var(--border); transition: border-color 0.4s; }
+.lab-inc--fired .lab-inc-copies { border-left-color: var(--critical); }
+.lab-inc-copy { margin: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface);
+  opacity: 0.35; transform: translateY(4px); transition: opacity 0.35s, transform 0.35s, border-color 0.35s, box-shadow 0.35s; }
+.lab-inc-copy.is-on { opacity: 1; transform: none; }
+.lab-inc-copy[data-role="opened"].is-on { border-color: var(--critical); box-shadow: 0 0 0 3px color-mix(in srgb, var(--critical) 18%, transparent); }
+.lab-inc-copy[data-role="joined"].is-on { border-color: color-mix(in srgb, var(--critical) 55%, var(--border)); }
+.lab-inc-copy p { margin: 0; }
+.lab-inc-copy__h { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 0.4rem; align-items: baseline; }
+.lab-inc-copy__n { font-weight: 600; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.lab-inc-copy__c { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+.lab-inc-copy__k, .lab-inc-copy__b { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+.lab-inc-copy__ioc { color: var(--good); }
+.lab-inc-copy__k > span:first-child { white-space: nowrap; }
+.lab-inc-copy__s { font-size: 0.78rem; margin-top: 0.45rem; min-height: 3.2em; }
+.lab-inc-copy[data-role="opened"] .lab-inc-copy__s { color: var(--critical); font-weight: 600; }
+.lab-inc-join { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 0.8rem; align-items: center; padding-left: 1.1rem; }
+.lab-inc-meter { position: relative; display: flex; gap: 4px; height: 0.9rem; margin-bottom: 1.2rem; }
+.lab-inc-meter__seg { flex: 1; border-radius: 3px; background: var(--border); transition: background 0.35s; }
+.lab-inc-meter__seg.is-on { background: var(--warning); }
+.lab-inc--fired .lab-inc-meter__seg.is-on { background: var(--critical); }
+.lab-inc-meter__thr { position: absolute; top: -0.2rem; bottom: -0.2rem; width: 2px; background: var(--text); font: 0.66rem/1 var(--font-mono); color: var(--text-muted); }
+.lab-inc-meter__thr::after { content: attr(data-at); }
+.lab-inc-meter__thr { white-space: nowrap; text-indent: 6px; padding-top: 1.35rem; }
+.lab-inc-meter--n2 .lab-inc-meter__thr { left: calc(50% - 1px); }
+.lab-inc-meter--n3 .lab-inc-meter__thr { left: calc(33.333% - 1px); }
+.lab-inc-meter--n4 .lab-inc-meter__thr { left: calc(25% - 1px); }
+.lab-inc-meter--n5 .lab-inc-meter__thr { left: calc(20% - 1px); }
+.lab-inc-meter--n6 .lab-inc-meter__thr { left: calc(16.666% - 1px); }
+.lab-inc-meter__thr::after { content: none; }
+.lab-inc-box { padding: 0.75rem 0.9rem; border: 1px dashed var(--border); border-radius: var(--radius-sm); opacity: 0.45; transition: opacity 0.4s, border-color 0.4s, background 0.4s; }
+.lab-inc--fired .lab-inc-box { opacity: 1; border: 1px solid var(--critical); background: color-mix(in srgb, var(--critical) 7%, var(--surface)); }
+.lab-inc-box p { margin: 0; }
+.lab-inc-box__t { font-weight: 700; color: var(--critical); }
+.lab-inc-box__d { font-size: 0.82rem; margin-top: 0.25rem; }
+.lab-inc-box__w { color: var(--text-muted); margin-top: 0.35rem; }
+.lab-inc-replay { justify-self: start; margin-left: 1.1rem; }
+.lab-inc-rule { padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1.25rem; }
+.lab-inc-rule > * { grid-column: 1; min-width: 0; }
+.lab-inc-rule__q, .lab-inc-rule__l, .lab-inc-rule__others { grid-column: 2; }
+.lab-inc-rule__q { grid-row: 1 / span 3; }
+.lab-inc-rule__eyebrow { margin: 0 0 0.3rem; font: 600 0.68rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.lab-inc-rule__t { margin: 0 0 0.4rem; font-size: 1rem; }
+.lab-inc-rule__d { margin: 0 0 0.6rem; font-size: 0.84rem; }
+.lab-inc-rule__q { margin: 0 0 0.5rem; padding: 0.6rem 0.7rem; font-size: 0.72rem; line-height: 1.6; background: var(--bg); border-radius: var(--radius-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+.lab-inc-rule__l { margin: 0 0 0.6rem; }
+.lab-inc-rule__others { margin: 0; padding-left: 1.1rem; color: var(--text-muted); display: grid; gap: 0.3rem; }
+@media (max-width: 900px) {
+  .lab-inc-rule { grid-template-columns: minmax(0, 1fr); }
+  .lab-inc-rule > *, .lab-inc-rule__q, .lab-inc-rule__l, .lab-inc-rule__others { grid-column: 1; grid-row: auto; }
+}
+@media (max-width: 640px) {
+  .lab-inc-copies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab-inc-join { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-inc-copy, .lab-inc-meter__seg, .lab-inc-box, .lab-inc-copies { transition: none; }
 }
