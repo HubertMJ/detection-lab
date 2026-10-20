@@ -226,6 +226,9 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(copies.nth(2)).toHaveAttribute("data-role", "joined");
     await expect(copies.nth(3)).toHaveAttribute("data-role", "joined");
     await expect(page.locator(".lab-inc")).toHaveClass(/lab-inc--fired/);
+    // The section's own styles apply (a lost brace once swallowed them all, live).
+    expect(await page.locator(".lab-inc-copies").evaluate((el) => getComputedStyle(el).display)).toBe("grid");
+    expect(await page.locator(".lab-inc-copy").first().evaluate((el) => getComputedStyle(el).borderTopStyle)).toBe("solid");
     await expect(page.locator(".lab-inc-box__d")).toContainText("4 copies");
     await expect(page.locator(".lab-inc-rule__q")).toContainText("cardinality(process.hash.sha256) >= 2");
     await expect(page.locator('.lab-inc-rule a[href$="siem/monitors/lab-polymorphic-beacon.json"]')).toHaveCount(1);
