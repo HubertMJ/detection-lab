@@ -92,11 +92,10 @@ export function wide(): Drawing {
     const a = boxes.get(e.from) as Box;
     const b = boxes.get(e.to) as Box;
     const r = e.route ?? "auto";
-    if (r === "around") {
-      // Out of a's bottom, under every zone, up past the right edge, into b's right side.
-      const yb = zoneBottom + 14;
-      const xr = zoneRight + 14;
-      return { edge: e, pts: [[cx(a), bottom(a)], [cx(a), yb], [xr, yb], [xr, cy(b)], [right(b), cy(b)]], at: [(cx(a) + xr) / 2, yb + 15], anchor: "middle" };
+    if (r === "over") {
+      // Up out of a, across above the row (under the zone's title line), down into b.
+      const y = Math.min(a.y, b.y) - 22;
+      return { edge: e, pts: [[cx(a), a.y], [cx(a), y], [cx(b), y], [cx(b), b.y]], at: [(cx(a) + cx(b)) / 2, y - 5], anchor: "middle" };
     }
     if (Math.abs(cy(a) - cy(b)) < 1) {
       const fwd = cx(b) > cx(a);
@@ -121,7 +120,7 @@ export function wide(): Drawing {
     const x1 = fwd ? b.x : right(b);
     return { edge: e, pts: [[x0, down ? bottom(a) : a.y], [x0, cy(b)], [x1, cy(b)]], at: [(x0 + x1) / 2, cy(b) - 8], anchor: "middle" };
   });
-  return { view: "wide", width: zoneRight + 14 + W.pad, height: zoneBottom + 14 + 22, zones, heads: [], boxes, subs, edges };
+  return { view: "wide", width: zoneRight + W.pad, height: zoneBottom + W.pad, zones, heads: [], boxes, subs, edges };
 }
 
 // ---------- the phone's drawing ----------
@@ -177,7 +176,8 @@ export function narrow(): Drawing {
       const [y0, y1] = b.y > a.y ? [bottom(a), b.y] : [a.y, bottom(b)];
       return { edge: e, pts: [[cx(a), y0], [cx(a), y1]], at: [cx(a) + 9, (y0 + y1) / 2 + 4], anchor: "start" };
     }
-    const dy = lane === 0 ? -6 : 6;
+    // Each lane enters and leaves its boxes at its own height, so two lanes never share an end.
+    const dy = -6 + 6 * lane;
     if (b.y > a.y) {
       const x = a.x - N.lane * (lane + 1);
       return { edge: e, pts: [[a.x, cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [b.x, cy(b) + dy]], anchor: "start" };
@@ -185,7 +185,7 @@ export function narrow(): Drawing {
     const x = right(a) + N.lane * (lane + 1);
     return { edge: e, pts: [[right(a), cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [right(b), cy(b) + dy]], anchor: "start" };
   });
-  return { view: "narrow", width: N.x + N.w + 30, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
+  return { view: "narrow", width: N.x + N.w + N.lane * lanes.right.length + 10, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
 }
 
 // ---------- markup ----------

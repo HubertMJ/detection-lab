@@ -13,18 +13,32 @@ describe("the lab diagram's model", () => {
     expect(validate()).toEqual([]);
   });
 
-  it("draws the run end to end: both triggers, the VM, the SIEM's stream, detections and validator, the API and the page; variant A beside it", () => {
+  it("starts where the landing page's and /cluster/'s diagrams start: the visitor, the edge, the tunnel, the Gateway, with their words", () => {
+    const edge = (from: string, to: string) => EDGES.find((e) => e.from === from && e.to === to);
+    const path = ["visitor", "edge", "cloudflared", "gateway"];
+    expect(NARROW.slice(0, 4)).toEqual(path);
+    expect(path.map((id) => NODES.find((n) => n.id === id)?.label)).toEqual(["Visitor", "Cloudflare edge", "cloudflared ×2", "Cilium Gateway"]);
+    expect([edge("visitor", "edge")?.label, edge("edge", "cloudflared")?.label, edge("cloudflared", "gateway")?.label]).toEqual(["HTTPS", "tunnel", "HTTPS"]);
+    expect(edge("edge", "cloudflared")?.both).toBe(true);
+    expect(edge("gateway", "page")?.label).toBe("/lab/");
+    expect(edge("gateway", "api")?.label).toBe("/cluster/api");
+    for (const id of [...path, "page", "api"]) expect(NODES.find((n) => n.id === id)?.role).toBe("entry");
+    expect(ZONES.map((z) => z.title)).toEqual(["Internet", "k3s01", "siem01", "Proxmox host", "Lab VM"]);
+  });
+
+  it("then the run: both triggers, the VM, the SIEM's stream, detections and validator, back to the API; variant A beside it", () => {
     const edge = (from: string, to: string) => EDGES.some((e) => e.from === from && e.to === to);
-    expect(edge("timer", "reset") && edge("agent", "reset") && edge("reset", "vm")).toBe(true);
+    expect(edge("timer", "reset") && edge("trigger", "reset") && edge("reset", "vm")).toBe(true);
     expect(edge("vm", "stream") && edge("vm", "sink") && edge("stream", "detector") && edge("detector", "validator")).toBe(true);
     expect(edge("validator", "runs") && edge("runs", "api") && edge("page", "api")).toBe(true);
     expect(edge("runner", "stream")).toBe(true);
-    // The agent only ever calls out: its one link to the cluster is its own poll.
-    expect(EDGES.filter((e) => e.to === "agent")).toEqual([]);
-    expect(edge("agent", "api")).toBe(true);
-    for (const id of ["timer", "agent", "reset", "vm"]) expect(NODES.find((n) => n.id === id)?.zone).toBe("pve");
+    // The trigger only ever calls out, through the public way in: nothing points at it.
+    expect(EDGES.filter((e) => e.to === "trigger")).toEqual([]);
+    expect(edge("trigger", "edge")).toBe(true);
+    for (const id of ["trigger", "timer", "reset"]) expect(NODES.find((n) => n.id === id)?.zone).toBe("pve");
+    expect(NODES.find((n) => n.id === "vm")?.zone).toBe("lab");
     for (const id of ["stream", "sink", "detector", "validator", "runs"]) expect(NODES.find((n) => n.id === id)?.zone).toBe("siem");
-    for (const id of ["runner", "api", "page"]) expect(NODES.find((n) => n.id === id)?.zone).toBe("k3s");
+    for (const id of ["cloudflared", "gateway", "page", "api", "runner"]) expect(NODES.find((n) => n.id === id)?.zone).toBe("k3s");
   });
 
   it("names no internal address or VLAN (the page is public)", () => {

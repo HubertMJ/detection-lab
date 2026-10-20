@@ -3,9 +3,13 @@
 // (scripts/diagram.mjs; a unit test fails when the README's copy is stale). Nothing here touches the
 // DOM, so the same module runs in the build, in Node and in vitest.
 //
+// It starts where the landing page's and the cluster page's diagrams start, at the visitor, with the
+// same zones, names, colours and edge words for the shared path (hubertjablon.ski
+// src/diagram/model.ts, self-defending-portfolio app/web/src/diagram/model.ts), then follows the lab.
+//
 // The page is public: names, schedules and ports, but no internal address or VLAN.
 
-/** A box's colour: where the copies run, what detects, what records, what the visitor reaches. */
+/** A box's colour, as on the other two diagrams: the request path, the attacked machine, what detects, what records. */
 export type Role = "neutral" | "attack" | "detect" | "record" | "entry";
 
 export interface Zone {
@@ -29,8 +33,8 @@ export interface LabNode {
   at: [number, number];
 }
 
-/** auto: straight when the two share a row or column; hv/vh: one bend; around: under everything and up the right side. */
-export type Route = "auto" | "hv" | "vh" | "around";
+/** auto: straight when the two share a row or column; hv/vh: one bend; over: up, across above the row, down into b. */
+export type Route = "auto" | "hv" | "vh" | "over";
 
 export interface LabEdge {
   from: string;
@@ -44,55 +48,76 @@ export interface LabEdge {
 }
 
 export const ZONES: Zone[] = [
-  { id: "k3s", title: "k3s01", sub: "the cluster", subNarrow: "the cluster", at: [3, 0, 3, 1] },
-  { id: "pve", title: "Proxmox host", sub: "lab-vm is isolated: egress to siem01 only", subNarrow: "lab-vm isolated", at: [0, 1.3, 3, 2] },
-  // No subtitle: the CronJob's line into the stream crosses where it would sit.
-  { id: "siem", title: "siem01", sub: "", subNarrow: "own VM", at: [3, 1.3, 3, 2] },
+  { id: "internet", title: "Internet", sub: "", subNarrow: "", at: [0, 0, 2, 1] },
+  // A short subtitle: the Gateway's route to the API runs above the boxes beside it.
+  // Subtitles stop short of the lines that cross a zone's title row (the phone's run down the middle).
+  { id: "k3s", title: "k3s01", sub: "one VM · Cilium", subNarrow: "one VM", at: [2, 0, 4, 2] },
+  { id: "siem", title: "siem01", sub: "", subNarrow: "own VM", at: [3, 2.3, 3, 2] },
+  { id: "pve", title: "Proxmox host", sub: "lab-vm reaches siem01 only", subNarrow: "", at: [0, 2.3, 2, 2] },
+  { id: "lab", title: "Lab VM", sub: "", subNarrow: "isolated", at: [2, 3.3, 1, 1] },
 ];
 
 export const NODES: LabNode[] = [
-  // ---- the Proxmox host: what starts a run, and the VM it runs on ----
-  { id: "timer", label: "lab-vm-run timer", sub: "daily 03:00 UTC", zone: "pve", role: "neutral", at: [0, 1.3] },
-  { id: "agent", label: "Run-now agent", sub: "polls the cluster API · outbound only", zone: "pve", role: "neutral", at: [1, 2.3] },
-  { id: "reset", label: "Reset and start", sub: "rollback to lab-clean · markers", zone: "pve", role: "neutral", at: [1, 1.3] },
-  { id: "vm", label: "lab-vm", sub: "VM 122 · Sysmon for Linux · Fluent Bit", zone: "pve", role: "attack", at: [2, 1.3] },
-  // ---- siem01: the stream, the detections, the run document ----
-  { id: "stream", label: "sdp-lab stream", sub: "OpenSearch · append-only", zone: "siem", role: "record", at: [3, 1.3] },
-  { id: "sink", label: "lab-sink", sub: ":8080 · beacon sink", zone: "siem", role: "neutral", at: [3, 2.3] },
-  { id: "detector", label: "Detector + monitor", sub: "Security Analytics · beacon monitor", zone: "siem", role: "detect", at: [4, 1.3] },
-  { id: "validator", label: "Validator", sub: "lab-validator timer · every 5 min", zone: "siem", role: "record", at: [4, 2.3] },
-  { id: "runs", label: "lab-runs", sub: "run documents", zone: "siem", role: "record", at: [5, 2.3] },
-  // ---- k3s01: variant A, and what the visitor reaches ----
-  { id: "runner", label: "lab-runner CronJob", sub: "variant A · 03:30 UTC", zone: "k3s", role: "neutral", at: [3, 0] },
+  // ---- the way in, as on the landing page and /cluster/ ----
+  { id: "visitor", label: "Visitor", sub: "browser", zone: "internet", role: "entry", at: [0, 0] },
+  { id: "edge", label: "Cloudflare edge", sub: "TLS · WAF", zone: "internet", role: "entry", at: [1, 0] },
+  { id: "cloudflared", label: "cloudflared ×2", sub: "no inbound port", zone: "k3s", role: "entry", at: [2, 0] },
+  { id: "gateway", label: "Cilium Gateway", sub: "routes by path", zone: "k3s", role: "entry", at: [3, 0] },
   { id: "page", label: "/lab/ page", sub: "the replay · Start run now", zone: "k3s", role: "entry", at: [4, 0] },
   { id: "api", label: "Cluster API", sub: "/cluster/api/lab/ · latest · vm · raw · run", zone: "k3s", role: "entry", at: [5, 0] },
+  // ---- variant A, in the cluster ----
+  { id: "runner", label: "lab-runner CronJob", sub: "variant A · 03:30 UTC", zone: "k3s", role: "neutral", at: [3, 1] },
+  // ---- siem01: the stream, the detections, the run document ----
+  { id: "stream", label: "sdp-lab stream", sub: "OpenSearch · append-only", zone: "siem", role: "record", at: [3, 2.3] },
+  { id: "detector", label: "Detector + monitor", sub: "Security Analytics · beacon monitor", zone: "siem", role: "detect", at: [4, 3.3] },
+  { id: "validator", label: "Validator", sub: "lab-validator timer · every 5 min", zone: "siem", role: "record", at: [5, 3.3] },
+  { id: "runs", label: "lab-runs", sub: "run documents", zone: "siem", role: "record", at: [5, 2.3] },
+  { id: "sink", label: "lab-sink", sub: ":8080 · beacon sink", zone: "siem", role: "neutral", at: [3, 3.3] },
+  // ---- the Proxmox host: what starts a run, and the VM it runs on ----
+  { id: "trigger", label: "Run-now trigger", sub: "every 15 s · outbound only", zone: "pve", role: "neutral", at: [1, 2.3] },
+  { id: "timer", label: "lab-vm-run timer", sub: "daily 03:00 UTC", zone: "pve", role: "neutral", at: [0, 3.3] },
+  { id: "reset", label: "Reset and start", sub: "rollback to lab-clean · markers", zone: "pve", role: "neutral", at: [1, 3.3] },
+  { id: "vm", label: "lab-vm", sub: "VM 122 · Sysmon for Linux · Fluent Bit", zone: "lab", role: "attack", at: [2, 3.3] },
 ];
 
 export const EDGES: LabEdge[] = [
+  // The way in: the same words as the other two diagrams.
+  { from: "visitor", to: "edge", label: "HTTPS", kind: "flow" },
+  { from: "edge", to: "cloudflared", label: "tunnel", kind: "flow", both: true },
+  { from: "cloudflared", to: "gateway", label: "HTTPS", kind: "flow" },
+  { from: "gateway", to: "page", label: "/lab/", kind: "flow" },
+  { from: "gateway", to: "api", label: "/cluster/api", kind: "flow", route: "over" },
+  // "Start run now": the page asks the API; the trigger on the Proxmox host collects the request.
+  { from: "page", to: "api", label: "POST", kind: "side" },
+  { from: "trigger", to: "edge", label: "polls run/claim, outbound", kind: "side" },
+  { from: "trigger", to: "reset", label: "on demand", kind: "flow" },
   { from: "timer", to: "reset", label: "daily", kind: "flow" },
-  { from: "agent", to: "reset", label: "on demand", kind: "flow" },
   { from: "reset", to: "vm", label: "start", kind: "flow" },
-  { from: "vm", to: "stream", label: "events", kind: "flow" },
-  { from: "vm", to: "sink", label: "beacons", kind: "side", route: "vh" },
+  { from: "vm", to: "stream", label: "events", kind: "flow", route: "vh" },
+  { from: "vm", to: "sink", label: "beacons", kind: "side" },
   { from: "runner", to: "stream", label: "synthetic events", kind: "flow" },
-  { from: "stream", to: "detector", label: "rules", kind: "flow" },
+  { from: "stream", to: "detector", label: "rules", kind: "flow", route: "hv" },
   { from: "detector", to: "validator", label: "findings", kind: "flow" },
   { from: "validator", to: "runs", label: "writes", kind: "flow" },
   { from: "runs", to: "api", label: "read-only", kind: "flow" },
-  { from: "page", to: "api", label: "JSON", kind: "flow", both: true },
-  { from: "agent", to: "api", label: "polls for a run request, outbound", kind: "side", route: "around" },
 ];
 
 /** The phone's drawing: every node top to bottom, in this order. */
-export const NARROW: string[] = ["timer", "agent", "reset", "vm", "sink", "stream", "detector", "validator", "runs", "runner", "api", "page"];
+export const NARROW: string[] = [
+  "visitor", "edge", "cloudflared", "gateway", "page", "api", "runner",
+  "stream", "detector", "validator", "runs", "sink", "trigger", "timer", "reset", "vm",
+];
 
 export const TITLE = "How a run reaches this page";
 
 /** The drawing in words, for a screen reader and the README. */
 export function describe(): string {
   return (
-    "Every day at 03:00 UTC a timer on the Proxmox host, or on demand an agent that polls the cluster API " +
-    "outbound, rolls the isolated lab VM back to its clean snapshot and starts it. The VM runs four renamed " +
+    "A visitor reaches this page and the cluster API the way every page here is reached: HTTPS to the Cloudflare " +
+    "edge, a tunnel to two cloudflared replicas in the k3s01 VM, which opens no inbound port, and the Cilium Gateway, " +
+    "which routes /lab/ to the page and /cluster/api to the API. Every day at 03:00 UTC a timer on the Proxmox host, or " +
+    "on demand a trigger there that polls the API outbound for a visitor's Start run now, rolls the isolated lab VM " +
+    "back to its clean snapshot and starts it. The VM runs four renamed " +
     "copies of a harmless test program; Sysmon for Linux records them and Fluent Bit ships the events over " +
     "mutual TLS to the sdp-lab stream on siem01, and the copies beacon to the lab sink there. The Security " +
     "Analytics detector and the beacon monitor catch them, and within minutes a validator (every 5 minutes) lines the findings up " +

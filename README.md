@@ -26,26 +26,41 @@ up one to one.
 <!-- diagram: generated from web/src/diagram/model.ts by `npm run diagram` in web/; do not edit -->
 ```mermaid
 flowchart LR
-    subgraph k3s["k3s01 · the cluster"]
-        runner["lab-runner CronJob<br/>variant A · 03:30 UTC"]
+    subgraph internet["Internet"]
+        visitor["Visitor<br/>browser"]
+        edge["Cloudflare edge<br/>TLS · WAF"]
+    end
+    subgraph k3s["k3s01 · one VM · Cilium"]
+        cloudflared["cloudflared ×2<br/>no inbound port"]
+        gateway["Cilium Gateway<br/>routes by path"]
         page["/lab/ page<br/>the replay · Start run now"]
         api["Cluster API<br/>/cluster/api/lab/ · latest · vm · raw · run"]
-    end
-    subgraph pve["Proxmox host · lab-vm is isolated: egress to siem01 only"]
-        timer["lab-vm-run timer<br/>daily 03:00 UTC"]
-        agent["Run-now agent<br/>polls the cluster API · outbound only"]
-        reset["Reset and start<br/>rollback to lab-clean · markers"]
-        vm["lab-vm<br/>VM 122 · Sysmon for Linux · Fluent Bit"]
+        runner["lab-runner CronJob<br/>variant A · 03:30 UTC"]
     end
     subgraph siem["siem01"]
         stream["sdp-lab stream<br/>OpenSearch · append-only"]
-        sink["lab-sink<br/>:8080 · beacon sink"]
         detector["Detector + monitor<br/>Security Analytics · beacon monitor"]
         validator["Validator<br/>lab-validator timer · every 5 min"]
         runs["lab-runs<br/>run documents"]
+        sink["lab-sink<br/>:8080 · beacon sink"]
     end
+    subgraph pve["Proxmox host · lab-vm reaches siem01 only"]
+        trigger["Run-now trigger<br/>every 15 s · outbound only"]
+        timer["lab-vm-run timer<br/>daily 03:00 UTC"]
+        reset["Reset and start<br/>rollback to lab-clean · markers"]
+    end
+    subgraph lab["Lab VM"]
+        vm["lab-vm<br/>VM 122 · Sysmon for Linux · Fluent Bit"]
+    end
+    visitor -- "HTTPS" --> edge
+    edge <-- "tunnel" --> cloudflared
+    cloudflared -- "HTTPS" --> gateway
+    gateway -- "/lab/" --> page
+    gateway -- "/cluster/api" --> api
+    page -. "POST" .-> api
+    trigger -. "polls run/claim, outbound" .-> edge
+    trigger -- "on demand" --> reset
     timer -- "daily" --> reset
-    agent -- "on demand" --> reset
     reset -- "start" --> vm
     vm -- "events" --> stream
     vm -. "beacons" .-> sink
@@ -54,8 +69,6 @@ flowchart LR
     detector -- "findings" --> validator
     validator -- "writes" --> runs
     runs -- "read-only" --> api
-    page <-- "JSON" --> api
-    agent -. "polls for a run request, outbound" .-> api
 ```
 <!-- /diagram -->
 
@@ -63,17 +76,17 @@ The same model draws this diagram on the `/lab/` page (wide and phone layouts, i
 unit test (`web/test/unit/diagram.test.ts`) fails when this copy is stale.
 
 Variant B runs a real, harmless program on an isolated VM ([`vm/`](vm/README.md)): a timer on the
-Proxmox host (or, on demand, an agent that polls the cluster API outbound) rolls the VM back to a
-clean snapshot and starts it, Sysmon for Linux records the four copies, Fluent Bit ships the events
-to the SIEM, and the VM powers off; a validator timer on siem01 (`run.py --mode isolated-vm`) then
-writes the run document. Variant A executes nothing: `generate.py` only writes synthetic JSON (the
-events a run would produce, plus the ground truth). The events are indexed into the real SIEM, its own Sigma rules and
-Alerting monitors do the detecting, and `validate.py` compares what they caught against the ground
-truth. The web app reads a `LabReplay` and computes everything in the browser: it fetches the latest
-real run from the cluster API (`/cluster/api/lab/latest`, same origin) and, until that endpoint
-answers — and in the standalone image, which has no API — it falls back to the bundled synthetic
-sample. The generator writes events in the same shape, so the page and a real run can be compared
-one to one.
+Proxmox host (or, on demand, a trigger there that polls the cluster API outbound, through the same
+Cloudflare entry) rolls the VM back to a clean snapshot and starts it, Sysmon for Linux records the
+four copies, Fluent Bit ships the events to the SIEM, and the VM powers off; a validator timer on
+siem01 (`run.py --mode isolated-vm`) then writes the run document. Variant A executes nothing:
+`generate.py` only writes synthetic JSON (the events a run would produce, plus the ground truth).
+The events are indexed into the real SIEM, its own Sigma rules and Alerting monitors do the
+detecting, and `validate.py` compares what they caught against the ground truth. The web app reads a
+`LabReplay` and computes everything in the browser: it fetches the latest real run from the cluster
+API (`/cluster/api/lab/latest`, same origin) and, until that endpoint answers — and in the
+standalone image, which has no API — it falls back to the bundled synthetic sample. The generator
+writes events in the same shape, so the page and a real run can be compared one to one.
 
 ## The generator (`lab/`)
 
