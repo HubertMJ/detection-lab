@@ -85,7 +85,10 @@ function refresh(): void {
 function refusal(status: number, body: unknown): string {
   const err = typeof body === "object" && body !== null ? String((body as { error?: unknown }).error ?? "") : "";
   if (status === 409) return "A run is already queued or running.";
-  if (status === 429) return err === "daily limit" ? "Today's runs are used up; try again tomorrow." : "The VM rests between runs; try again in a few minutes.";
+  if (status === 429 && err === "daily limit") return "Today's runs are used up; try again tomorrow.";
+  if (status === 429 && err === "visitor limit") return "You have started your runs for today; others can still start one.";
+  if (status === 429 && err === "too many requests") return "Too many clicks; wait a moment.";
+  if (status === 429) return "The VM rests between runs; try again in a few minutes.";
   if (status === 423) return "The daily runs are on now; try again a little later.";
   return "The run could not be started right now.";
 }
