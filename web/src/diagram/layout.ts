@@ -206,12 +206,20 @@ function el(tag: string, attrs: Attrs, ...children: string[]): string {
 }
 const pathD = (pts: Pt[]) => pts.map(([x, y], i) => `${i ? "L" : "M"}${r1(x)} ${r1(y)}`).join(" ");
 
+/** A blurb's first sentence (two when the first is a word or two): the short words ASCII mode's popup
+ * shows beside a box (data-tip). */
+export function firstSentence(s: string): string {
+  let out = "";
+  for (const x of s.match(/.*?[.!?](?=\s|$)/g) ?? [s]) { out += x; if (out.trim().length >= 30) break; }
+  return out.trim() || s;
+}
+
 /** A node is a button (ui/diagram.ts opens its caption): focusable, named, collapsed at rest. */
 function nodeMarkup(n: LabNode, b: Box, subs: string[]): string {
   const first = cy(b) - (subs.length * LINE) / 2 + 4.5;
   return el(
     "g",
-    { class: `ld-node ld-role--${n.role}`, "data-node": n.id, "data-state": "idle", tabindex: 0, role: "button", "aria-label": `${n.label}: ${n.sub}`, "aria-expanded": "false" },
+    { class: `ld-node ld-role--${n.role}`, "data-node": n.id, "data-state": "idle", tabindex: 0, role: "button", "aria-label": `${n.label}: ${n.sub}`, "aria-expanded": "false", "data-tip": firstSentence(n.blurb) },
     el("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: 8 }),
     el("text", { class: "ld-label", x: cx(b), y: first }, esc(n.label)),
     ...subs.map((s, i) => el("text", { class: "ld-sub", x: cx(b), y: first + LINE * (i + 1) }, esc(s))),

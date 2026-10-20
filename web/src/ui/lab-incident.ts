@@ -59,7 +59,7 @@ export function roles(list: CopyBeacon[], openedAt: number | null): Role[] {
 }
 
 interface Box { x: number; y: number; w: number; h: number }
-interface NodeW { id: string; label: string; role: string; sub: string[]; gauge?: boolean; outcome?: boolean }
+interface NodeW { id: string; label: string; role: string; sub: string[]; tip: string; gauge?: boolean; outcome?: boolean }
 interface Edge { id: string; tone: "run" | "detect" | "incident"; pts: [number, number][]; label?: string; at?: [number, number]; anchor?: string }
 interface Drawing { view: "wide" | "narrow"; width: number; height: number; zones: { box: Box; title: string; sub: string }[];
   heads: { x: number; y: number; title: string; sub: string }[]; boxes: Map<string, Box>; edges: Edge[]; headH: number }
@@ -96,16 +96,18 @@ export function incidentStory(d: LabReplay): HTMLElement | null {
   // ---------- the nodes' words ----------
   const nodes: NodeW[] = [
     ...copies.map((c) => ({ id: `c${c.n}`, label: c.name, role: "attack",
+      tip: c.byHash ? "The copy the known-hash rule can catch: its SHA-256 is on the indicator list." : "A rebuilt copy: a new SHA-256 and a new name, so the known-hash rule sees nothing.",
       sub: [`copy ${c.n} · ${c.byHash ? "on the IOC list" : "unknown hash"}`, `sha-256 ${shortHash(c.sha)}`, `first beacon ${mmss(c.beacons[0])} · ${c.beacons.length}×`] })),
-    { id: "hash", label: "Known-bad hash", role: "detect",
+    { id: "hash", label: "Known-bad hash", role: "detect", tip: "A list of known-bad SHA-256 values: it fires only on a copy whose hash is on it.",
       sub: ["Sigma rule · IOC list", "matches one known sha-256", caught.length ? `caught copy ${caught.map((c) => c.n).join(", ")} only` : "caught none"] },
-    { id: "sink", label: beacon, role: "neutral", sub: ["lab-sink on siem01", "one destination ip:port", `all ${n} copies call it`] },
+    { id: "sink", label: beacon, role: "neutral", tip: "The address every copy calls: a socket on siem01 that accepts and closes.", sub: ["lab-sink on siem01", "one destination ip:port", `all ${n} copies call it`] },
     { id: "mon", label: "One beacon, many binaries", role: "detect", gauge: true,
+      tip: `Counts different program hashes per address; ${THRESHOLD} or more opens an incident.`,
       sub: ["Alerting monitor · every minute", `last ${WINDOW_MIN} min of connections`, "a bucket per destination ip:port"] },
     openedIdx >= 0
-      ? { id: "inc", label: "One incident", role: "incident", outcome: true,
+      ? { id: "inc", label: "One incident", role: "incident", outcome: true, tip: `One incident holds all ${n} copies: whatever they are called, they call one address.`,
         sub: [`${n} copies · ${hashes} hashes`, "one address", incAt !== null ? `opened ${mmss(incAt)} · +${delay ?? "?"} s` : "opened"] }
-      : { id: "inc", label: "No incident", role: "incident", outcome: true, sub: ["never two hashes", "at one address", `within ${WINDOW_MIN} min`] },
+      : { id: "inc", label: "No incident", role: "incident", outcome: true, tip: `The monitor never saw ${THRESHOLD} different hashes at one address.`, sub: ["never two hashes", "at one address", `within ${WINDOW_MIN} min`] },
   ];
   const nodeOf = (id: string): NodeW => nodes.find((x) => x.id === id) as NodeW;
 
@@ -216,7 +218,7 @@ export function incidentStory(d: LabReplay): HTMLElement | null {
       const b = dr.boxes.get(nd.id) as Box;
       const first = b.y + dr.headH / 2 - (nd.sub.length * LINE) / 2 + 4.5;
       const g = svg("g", { class: `ld-node ld-role--${nd.role}${nd.outcome ? " li-outcome" : ""}`, "data-node": nd.id, "data-state": "idle",
-        tabindex: 0, role: "button", "aria-label": `${nd.label}: ${nd.sub.join(" · ")}`, "aria-expanded": "false" },
+        tabindex: 0, role: "button", "aria-label": `${nd.label}: ${nd.sub.join(" · ")}`, "aria-expanded": "false", "data-tip": nd.tip },
         svg("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: 8 }),
         svg("text", { class: "ld-label", x: cx(b), y: first }, txt(nd.label)),
         ...nd.sub.map((s, i) => svg("text", { class: "ld-sub", x: cx(b), y: first + LINE * (i + 1) }, txt(s))));

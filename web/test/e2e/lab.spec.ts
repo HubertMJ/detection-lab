@@ -318,6 +318,11 @@ test.describe("detection lab preview at /lab/", () => {
       const rect = pre.getBoundingClientRect();
       return { x: rect.left + ((c + 0.5) / [...lines[0]].length) * rect.width, y: rect.top + ((r + 0.5) / (lines.length - 1)) * rect.height };
     });
+    // With a pointer that hovers, the box's short words pop up beside it first.
+    if (info.project.name === "desktop") {
+      await page.mouse.move(box.x, box.y);
+      await expect(page.locator(".ascii-tip:not([hidden])")).toContainText("Cloudflare terminates TLS");
+    }
     await page.mouse.click(box.x, box.y);
     await expect(page.locator("#lab-diagram-caption")).toBeVisible();
     await expect(page.locator("#lab-diagram-caption")).toContainText("Cloudflare");
