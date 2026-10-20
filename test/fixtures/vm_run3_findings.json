@@ -1,0 +1,199 @@
+{
+ "total_findings": 5,
+ "findings": [
+  {
+   "detectorId": "1ziqUqEBdQ4h7L6QHJZO",
+   "id": "e447eda0-ccda-4e11-ac2a-b22b7c8bd779",
+   "related_doc_ids": [
+    "ETwZWKEBdQ4h7L6Qzx0l"
+   ],
+   "index": ".ds-sdp-lab-000002",
+   "queries": [
+    {
+     "id": "iDiqUqEBdQ4h7L6QGZZb",
+     "name": "Lab - user unit or crontab written by a program in /tmp",
+     "fields": [],
+     "query": "((event.code: \"11\") AND (process.executable: \\/tmp\\/*)) AND ((file.path: *\\/.config\\/systemd\\/user\\/*) OR (file.path: \\/var\\/spool\\/cron\\/*))",
+     "tags": [
+      "high",
+      "sdp_lab",
+      "attack.persistence",
+      "attack.t1543.002",
+      "attack.t1053.003"
+     ],
+     "query_field_names": [
+      "registry.path",
+      "file.path",
+      "event.code",
+      "process.hash.sha256",
+      "process.executable"
+     ]
+    }
+   ],
+   "timestamp": 1792479502314,
+   "document_list": [
+    {
+     "index": ".ds-sdp-lab-000002",
+     "id": "ETwZWKEBdQ4h7L6Qzx0l",
+     "found": true,
+     "document": "{\"process\":{\"name\":\"update-helper\",\"pid\":868,\"executable\":\"/tmp/update-helper\"},\"@timestamp\":\"2026-10-20T06:56:49.529Z\",\"file\":{\"path\":\"/root/.config/systemd/user/update-helper.service\"},\"host\":{\"name\":\"lab-vm\"},\"event\":{\"action\":\"file-create\",\"ingested\":\"2026-10-20T06:57:28.869136838Z\",\"code\":\"11\",\"dataset\":\"lab\",\"overwrite\":false,\"kind\":\"event\"},\"lab\":{\"mode\":\"isolated-vm\",\"variant\":1,\"run_id\":\"lab-20261020T065649Z-6f5f9b\"}}"
+    }
+   ]
+  },
+  {
+   "detectorId": "1ziqUqEBdQ4h7L6QHJZO",
+   "id": "5b7ac81b-92ed-4014-8a8b-dc82ce4e31b9",
+   "related_doc_ids": [
+    "FzwZWKEBdQ4h7L6Q1R1n"
+   ],
+   "index": ".ds-sdp-lab-000002",
+   "queries": [
+    {
+     "id": "iDiqUqEBdQ4h7L6QGZZb",
+     "name": "Lab - user unit or crontab written by a program in /tmp",
+     "fields": [],
+     "query": "((event.code: \"11\") AND (process.executable: \\/tmp\\/*)) AND ((file.path: *\\/.config\\/systemd\\/user\\/*) OR (file.path: \\/var\\/spool\\/cron\\/*))",
+     "tags": [
+      "high",
+      "sdp_lab",
+      "attack.persistence",
+      "attack.t1543.002",
+      "attack.t1053.003"
+     ],
+     "query_field_names": [
+      "registry.path",
+      "file.path",
+      "event.code",
+      "process.hash.sha256",
+      "process.executable"
+     ]
+    }
+   ],
+   "timestamp": 1792479502314,
+   "document_list": [
+    {
+     "index": ".ds-sdp-lab-000002",
+     "id": "FzwZWKEBdQ4h7L6Q1R1n",
+     "found": true,
+     "document": "{\"process\":{\"name\":\"svc-2394809a\",\"pid\":871,\"executable\":\"/tmp/svc-2394809a\"},\"@timestamp\":\"2026-10-20T06:57:27.320Z\",\"file\":{\"path\":\"/root/.config/systemd/user/svc-2394809a.service\"},\"host\":{\"name\":\"lab-vm\"},\"event\":{\"action\":\"file-create\",\"ingested\":\"2026-10-20T06:57:30.471699614Z\",\"code\":\"11\",\"dataset\":\"lab\",\"overwrite\":false,\"kind\":\"event\"},\"lab\":{\"mode\":\"isolated-vm\",\"variant\":2,\"run_id\":\"lab-20261020T065649Z-6f5f9b\"}}"
+    }
+   ]
+  },
+  {
+   "detectorId": "1ziqUqEBdQ4h7L6QHJZO",
+   "id": "ccc9f8af-734b-4b3d-ae98-cd2977bb769a",
+   "related_doc_ids": [
+    "GTwZWKEBdQ4h7L6Q1R1n"
+   ],
+   "index": ".ds-sdp-lab-000002",
+   "queries": [
+    {
+     "id": "iDiqUqEBdQ4h7L6QGZZb",
+     "name": "Lab - user unit or crontab written by a program in /tmp",
+     "fields": [],
+     "query": "((event.code: \"11\") AND (process.executable: \\/tmp\\/*)) AND ((file.path: *\\/.config\\/systemd\\/user\\/*) OR (file.path: \\/var\\/spool\\/cron\\/*))",
+     "tags": [
+      "high",
+      "sdp_lab",
+      "attack.persistence",
+      "attack.t1543.002",
+      "attack.t1053.003"
+     ],
+     "query_field_names": [
+      "registry.path",
+      "file.path",
+      "event.code",
+      "process.hash.sha256",
+      "process.executable"
+     ]
+    }
+   ],
+   "timestamp": 1792479502314,
+   "document_list": [
+    {
+     "index": ".ds-sdp-lab-000002",
+     "id": "GTwZWKEBdQ4h7L6Q1R1n",
+     "found": true,
+     "document": "{\"process\":{\"name\":\"svc-ab096ed5\",\"pid\":872,\"executable\":\"/tmp/svc-ab096ed5\"},\"@timestamp\":\"2026-10-20T06:57:27.321Z\",\"file\":{\"path\":\"/root/.config/systemd/user/svc-ab096ed5.service\"},\"host\":{\"name\":\"lab-vm\"},\"event\":{\"action\":\"file-create\",\"ingested\":\"2026-10-20T06:57:30.471705745Z\",\"code\":\"11\",\"dataset\":\"lab\",\"overwrite\":false,\"kind\":\"event\"},\"lab\":{\"mode\":\"isolated-vm\",\"variant\":3,\"run_id\":\"lab-20261020T065649Z-6f5f9b\"}}"
+    }
+   ]
+  },
+  {
+   "detectorId": "1ziqUqEBdQ4h7L6QHJZO",
+   "id": "9ecd2690-04ed-4b42-aeff-1e0eafd9cfb5",
+   "related_doc_ids": [
+    "LTwZWKEBdQ4h7L6Q7B3R"
+   ],
+   "index": ".ds-sdp-lab-000002",
+   "queries": [
+    {
+     "id": "iDiqUqEBdQ4h7L6QGZZb",
+     "name": "Lab - user unit or crontab written by a program in /tmp",
+     "fields": [],
+     "query": "((event.code: \"11\") AND (process.executable: \\/tmp\\/*)) AND ((file.path: *\\/.config\\/systemd\\/user\\/*) OR (file.path: \\/var\\/spool\\/cron\\/*))",
+     "tags": [
+      "high",
+      "sdp_lab",
+      "attack.persistence",
+      "attack.t1543.002",
+      "attack.t1053.003"
+     ],
+     "query_field_names": [
+      "registry.path",
+      "file.path",
+      "event.code",
+      "process.hash.sha256",
+      "process.executable"
+     ]
+    }
+   ],
+   "timestamp": 1792479502314,
+   "document_list": [
+    {
+     "index": ".ds-sdp-lab-000002",
+     "id": "LTwZWKEBdQ4h7L6Q7B3R",
+     "found": true,
+     "document": "{\"process\":{\"name\":\"svc-cce1ac3b\",\"pid\":873,\"executable\":\"/tmp/svc-cce1ac3b\"},\"@timestamp\":\"2026-10-20T06:57:34.533Z\",\"file\":{\"path\":\"/root/.config/systemd/user/svc-cce1ac3b.service\"},\"host\":{\"name\":\"lab-vm\"},\"event\":{\"action\":\"file-create\",\"ingested\":\"2026-10-20T06:57:36.465111124Z\",\"code\":\"11\",\"dataset\":\"lab\",\"overwrite\":false,\"kind\":\"event\"},\"lab\":{\"mode\":\"isolated-vm\",\"variant\":4,\"run_id\":\"lab-20261020T065649Z-6f5f9b\"}}"
+    }
+   ]
+  },
+  {
+   "detectorId": "1ziqUqEBdQ4h7L6QHJZO",
+   "id": "d1951c85-e583-4dbe-a57a-62d9e07eadc6",
+   "related_doc_ids": [
+    "EDwZWKEBdQ4h7L6Qzx0l"
+   ],
+   "index": ".ds-sdp-lab-000002",
+   "queries": [
+    {
+     "id": "hDiqUqEBdQ4h7L6QGJaN",
+     "name": "Lab - process from a known sample hash",
+     "fields": [],
+     "query": "(event.code: \"1\") AND ((process.hash.sha256: \"4850c01e9e5cdb54b604908952b56f246e661dbec01ed85c19e349ce1ba92f2e\") OR (process.hash.sha256: \"f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332\"))",
+     "tags": [
+      "high",
+      "sdp_lab",
+      "attack.execution",
+      "attack.t1204.002"
+     ],
+     "query_field_names": [
+      "registry.path",
+      "file.path",
+      "event.code",
+      "process.hash.sha256",
+      "process.executable"
+     ]
+    }
+   ],
+   "timestamp": 1792479502314,
+   "document_list": [
+    {
+     "index": ".ds-sdp-lab-000002",
+     "id": "EDwZWKEBdQ4h7L6Qzx0l",
+     "found": true,
+     "document": "{\"process\":{\"name\":\"update-helper\",\"parent\":{\"name\":\"python3.13\",\"pid\":867},\"pid\":868,\"hash\":{\"sha256\":\"f876f3ff0694f1dad661d2e63d4c65709dde4499f2f4c5cd3068990127f3e332\"},\"executable\":\"/tmp/update-helper\"},\"@timestamp\":\"2026-10-20T06:56:49.527Z\",\"host\":{\"name\":\"lab-vm\"},\"event\":{\"action\":\"process-create\",\"ingested\":\"2026-10-20T06:57:28.869126809Z\",\"code\":\"1\",\"dataset\":\"lab\",\"overwrite\":false,\"kind\":\"event\"},\"lab\":{\"mode\":\"isolated-vm\",\"variant\":1,\"run_id\":\"lab-20261020T065649Z-6f5f9b\"}}"
+    }
+   ]
+  }
+ ]
+}
