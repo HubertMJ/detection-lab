@@ -1831,9 +1831,40 @@ html.slide-out-backward body > :not(.site-header) {
   }
 }
 
-.lab-diagram figcaption {
+.lab-diagram__foot {
   margin-top: 0.75rem;
   color: var(--text-muted);
+}
+
+.lab-diagram__foot p {
+  margin: 0;
+}
+
+/* The colour key under the drawing: a swatch per role, the box's own stroke and tint. */
+.ld-legend {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.1rem;
+  font: 0.72rem var(--font-mono);
+  color: var(--text-muted);
+}
+
+.ld-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ld-legend__item::before {
+  content: "";
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  border: 1.6px solid var(--role);
+  background: color-mix(in srgb, var(--role) 55%, var(--surface));
 }
 
 .ld-zone rect {
@@ -1856,30 +1887,32 @@ html.slide-out-backward body > :not(.site-header) {
   fill: var(--text-faint);
 }
 
+/* Every box wears its role's colour, as on the landing page and /cluster/; the key under the
+   drawing names them, so the colour is never the only word. */
+.ld-role--entry {
+  --role: var(--role-entry);
+}
+
+.ld-role--attack {
+  --role: var(--attack);
+}
+
+.ld-role--detect {
+  --role: var(--detect);
+}
+
+.ld-role--record {
+  --role: var(--role-record);
+}
+
+.ld-role--neutral {
+  --role: var(--neutral);
+}
+
 .ld-node rect {
-  fill: var(--surface);
-  stroke: var(--neutral);
+  fill: color-mix(in srgb, var(--role, var(--neutral)) var(--role-tint), var(--surface));
+  stroke: var(--role, var(--border-strong));
   stroke-width: 1.5;
-}
-
-.ld-role--attack rect {
-  stroke: var(--attack);
-  fill: color-mix(in srgb, var(--attack) var(--role-tint), var(--surface));
-}
-
-.ld-role--detect rect {
-  stroke: var(--detect);
-  fill: color-mix(in srgb, var(--detect) var(--role-tint), var(--surface));
-}
-
-.ld-role--record rect {
-  stroke: var(--role-record);
-  fill: color-mix(in srgb, var(--role-record) var(--role-tint), var(--surface));
-}
-
-.ld-role--entry rect {
-  stroke: var(--role-entry);
-  fill: color-mix(in srgb, var(--role-entry) var(--role-tint), var(--surface));
 }
 
 .ld-label {

@@ -77,7 +77,15 @@
       <figure class="lab-diagram" id="lab-diagram" aria-labelledby="lab-diagram-caption">
         {{diagram.wide}}
         {{diagram.narrow}}
-        <figcaption class="small" id="lab-diagram-caption">How a run reaches this page, both variants: the isolated VM on the Proxmox host (a real run, daily or on demand) and the CronJob in the cluster (synthetic events) feed the same SIEM, whose validator writes the run document the cluster API serves here. Orange: where the copies run. Amber: what detects. Violet: what records. Blue: what you reach. Dotted: a side link.</figcaption>
+        <figcaption class="lab-diagram__foot" id="lab-diagram-caption">
+          <ul class="ld-legend" aria-label="Colour key">
+            <li class="ld-legend__item ld-role--entry">request path</li>
+            <li class="ld-legend__item ld-role--attack">attacked VM</li>
+            <li class="ld-legend__item ld-role--detect">detects</li>
+            <li class="ld-legend__item ld-role--record">records</li>
+          </ul>
+          <p class="small">How a run reaches this page: the same way in as every page here, then both variants. The isolated VM on the Proxmox host (a real run, daily or when someone presses Start run now) and the CronJob in the cluster (synthetic events) feed the same SIEM, whose validator writes the run document the cluster API serves. Dotted: a side link.</p>
+        </figcaption>
       </figure>
       <p class="section__more" id="lab-next">Next step: send the same events to the OpenSearch SIEM behind <a href="/cluster/#correlation">the self-defending cluster</a>, so the findings come from real rules instead of being computed in this page.</p>
     </div>

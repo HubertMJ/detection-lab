@@ -34,9 +34,29 @@ test.describe("detection lab preview at /lab/", () => {
           }
         }
       }
+      // Edge labels clear of each other and of every line.
+      const labels = [...svg.querySelectorAll<SVGTextElement>(".ld-edgelabel")].map((t) => [t.textContent, t.getBBox()] as const);
+      for (const [i, [a, ba]] of labels.entries()) {
+        for (const [b, bb] of labels.slice(i + 1)) if (ba.x < bb.x + bb.width && ba.x + ba.width > bb.x && ba.y < bb.y + bb.height && ba.y + ba.height > bb.y) out.push(`"${a}" overlaps "${b}"`);
+        for (const e of svg.querySelectorAll<SVGPathElement>(".ld-line")) {
+          for (let l = 0; l <= e.getTotalLength(); l += 2) {
+            const p = e.getPointAtLength(l);
+            if (p.x > ba.x && p.x < ba.x + ba.width && p.y > ba.y && p.y < ba.y + ba.height) {
+              out.push(`"${a}" sits on a line`);
+              break;
+            }
+          }
+        }
+      }
+      // It starts where the landing page's and /cluster/'s diagrams start: the way in, in reading order.
+      const at = (id: string) => svg.querySelector<SVGGElement>(`.ld-node[data-node="${id}"] rect`)?.getBBox();
+      const path = ["visitor", "edge", "cloudflared", "gateway"].map(at);
+      const reads = view === "wide" ? (p: DOMRect, q: DOMRect) => p.x < q.x : (p: DOMRect, q: DOMRect) => p.y < q.y;
+      for (let i = 1; i < path.length; i++) if (!path[i - 1] || !path[i] || !reads(path[i - 1] as DOMRect, path[i] as DOMRect)) out.push(`the way in is out of order at ${i}`);
       if (document.documentElement.scrollWidth > document.documentElement.clientWidth) out.push("horizontal scroll");
       return out;
     }, shown);
+    await expect(page.locator(".ld-legend")).toBeVisible();
     expect(problems).toEqual([]);
     // Present in the served HTML itself, not drawn by a script.
     const html = await (await page.request.get("/lab/")).text();
