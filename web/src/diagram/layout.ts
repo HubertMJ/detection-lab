@@ -274,7 +274,7 @@ export function svg(dr: Drawing): string {
  * when motion is welcome.
  */
 export const TRAFFIC = {
-  in: { edges: ["visitor-edge", "edge-cloudflared", "cloudflared-gateway", "gateway-page"], period: 7, travel: 2.6 },
+  in: { edges: ["visitor-edge", "edge-cloudflared", "cloudflared-gateway", "gateway-page"], period: 3.6, travel: 2.6 },
   run: { edges: ["vm-stream", "stream-detector", "detector-validator", "validator-runs", "runs-api"], period: 4.8, travel: 3.8 },
 } as const;
 export type Lane = keyof typeof TRAFFIC;

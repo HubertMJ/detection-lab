@@ -338,6 +338,9 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(page.locator("html")).toHaveClass(/ascii/);
     await page.reload();
     await expect(page.locator("html")).toHaveClass(/ascii/);
+    // On a phone the way back is five taps on the banner over the title.
+    for (let i = 0; i < 5; i++) await page.locator(".ascii-banner").click();
+    await expect(page.locator("html")).not.toHaveClass(/ascii/);
     expect(errors).toEqual([]);
   });
 
