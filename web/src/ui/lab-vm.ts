@@ -25,6 +25,12 @@ function path(p: string): string {
 
 /** Above the panel: a real run with its id, date and duration, or a clearly-marked sample. */
 function note(d: LabReplay): HTMLElement {
+  if (d.live && d.run && d.lifecycle?.some((m) => m.marker === "poweroff_requested")) {
+    const dur = d.run.duration_s ? ` · ${mmss(d.run.duration_s)} on the VM` : "";
+    return h("p", { class: "lab-note" },
+      h("span", { class: "tag tag--detect" }, "Live"),
+      ` · Finished on an isolated VM${dur} · siem01's verdict appears here within minutes`);
+  }
   if (d.live && d.run) {
     return h("p", { class: "lab-note" },
       h("span", { class: "tag tag--detect" }, "Live"),
