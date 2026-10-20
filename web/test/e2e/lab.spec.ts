@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 // The detection lab's preview, served standalone at /lab/. The main site (/) lives in another image
@@ -59,6 +60,31 @@ test.describe("detection lab preview at /lab/", () => {
     // the sample is labelled a sample, never a real run
     await expect(page.locator(".lab-note")).toContainText("Sample");
     await expect(page.locator("#lab-replay-eyebrow")).toContainText("Sample run");
+  });
+
+  // A real B run (lab-20261019T191309Z-4e396b, siem01's own answers): the live status line, the
+  // replay's event count equal to the run's, feeds that never cut a line, and the raw records.
+  test("draws a real isolated-VM run: status line, event count, whole lines, raw records", async ({ page }) => {
+    const run = JSON.parse(readFileSync(new URL("./fixtures/vm-run-real.json", import.meta.url), "utf8"));
+    const raw = readFileSync(new URL("./fixtures/vm-raw-real.json", import.meta.url), "utf8");
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(run) }));
+    await page.route("**/cluster/api/lab/vm", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "off", last_restore: "2026-10-20T06:56:24Z", snapshot_clean: true, next_run: "2026-10-21T03:00:00Z" }) }));
+    await page.route("**/cluster/api/lab/raw", (r) => r.fulfill({ status: 200, contentType: "application/json", body: raw }));
+    await page.emulateMedia({ reducedMotion: "reduce" }); // the finished state at once
+    await page.goto("/lab/");
+    await expect(page.locator(".lab-note")).toContainText("Live · A real run on an isolated VM · 3:10 on the VM ·");
+    await expect(page.locator(".lab-rp-c__n").nth(1)).toHaveText(String(run.counters.events));
+    await expect(page.locator(".lab-vm-status__meta")).toContainText("clean snapshot");
+    for (const feed of await page.locator(".lab-rp-feed").all()) {
+      const fit = await feed.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const lines = [...el.children].map((c) => c.getBoundingClientRect());
+        return el.scrollHeight <= el.clientHeight && lines.every((l) => l.top >= box.top && l.bottom <= box.bottom);
+      });
+      expect(fit, "every line of a feed is whole").toBe(true);
+    }
+    await page.locator(".lab-vm-raw summary").first().click();
+    await expect(page.locator(".lab-vm-raw summary").first()).toContainText("as indexed in sdp-lab");
   });
 
   // No endpoint (the standalone image): the page falls back to the bundled synthetic sample, labelled
