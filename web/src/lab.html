@@ -40,11 +40,25 @@
 
 <main id="main" tabindex="-1" class="landing">
 
-  <section class="hero landing-hero" id="top" aria-labelledby="lab-title">
+  <section class="hero landing-hero lab-hero" id="top" aria-labelledby="lab-title">
     <div class="wrap">
       <p class="eyebrow" id="lab-eyebrow">Detection lab · design preview</p>
       <h1 id="lab-title">When the hash and the name keep changing</h1>
       <p class="hero__lead" id="lab-lead">A rule on a known hash catches one copy of a program. What catches the next three, when each has a new hash <strong>and a new name</strong>? This page replays one scenario from a synthetic sample: generated events, not a run on real machines.</p>
+      <figure class="lab-diagram" id="lab-diagram" aria-label="How a run reaches this page, live" data-run="none">
+        {{diagram.wide}}
+        {{diagram.narrow}}
+        <figcaption class="lab-diagram__foot">
+          <ul class="ld-legend" aria-label="Colour key">
+            <li class="ld-legend__item ld-role--entry">request path</li>
+            <li class="ld-legend__item ld-role--attack">attacked VM</li>
+            <li class="ld-legend__item ld-role--detect">detects</li>
+            <li class="ld-legend__item ld-role--record">records</li>
+          </ul>
+          <p class="ld-status" id="lab-diagram-status" aria-live="polite">The way in, and how a run reaches this page. <span class="needs-js">Pick a part to read what it is and where it lives.</span></p>
+          <div class="ld-caption" id="lab-diagram-caption" hidden></div>
+        </figcaption>
+      </figure>
     </div>
   </section>
 
@@ -74,19 +88,6 @@
         <li><h3>SIEM</h3><p>Sigma rules match single events; OpenSearch Alerting monitors count across them and score risk per entity.</p></li>
         <li><h3>Report</h3><p>Ground truth against findings, per technique: detected or missed, and how long it took.</p></li>
       </ol>
-      <figure class="lab-diagram" id="lab-diagram" aria-labelledby="lab-diagram-caption">
-        {{diagram.wide}}
-        {{diagram.narrow}}
-        <figcaption class="lab-diagram__foot" id="lab-diagram-caption">
-          <ul class="ld-legend" aria-label="Colour key">
-            <li class="ld-legend__item ld-role--entry">request path</li>
-            <li class="ld-legend__item ld-role--attack">attacked VM</li>
-            <li class="ld-legend__item ld-role--detect">detects</li>
-            <li class="ld-legend__item ld-role--record">records</li>
-          </ul>
-          <p class="small">How a run reaches this page: the same way in as every page here, then both variants. The isolated VM on the Proxmox host (a real run, daily or when someone presses Start run now) and the CronJob in the cluster (synthetic events) feed the same SIEM, whose validator writes the run document the cluster API serves. Dotted: a side link.</p>
-        </figcaption>
-      </figure>
       <p class="section__more" id="lab-next">Next step: send the same events to the OpenSearch SIEM behind <a href="/cluster/#correlation">the self-defending cluster</a>, so the findings come from real rules instead of being computed in this page.</p>
     </div>
   </section>

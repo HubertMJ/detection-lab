@@ -7,6 +7,9 @@
  * label next to it.
  */
 
+/* The architecture diagram's traffic routes, generated from src/diagram at build time (scripts/build.mjs). */
+@import "diagram-traffic.css";
+
 
 :root {
   color-scheme: dark;
@@ -1937,8 +1940,10 @@ html.slide-out-backward body > :not(.site-header) {
   stroke-dasharray: 2 4;
 }
 
+/* The arrowhead wears its line's colour, lit or not (a browser without context-stroke keeps the rest colour). */
 .ld-head {
   fill: var(--text-faint);
+  fill: context-stroke;
 }
 
 .ld-edgelabel {
@@ -1957,3 +1962,195 @@ html.slide-out-backward body > :not(.site-header) {
 .lab-rp--live .lab-rp-bar { display: none; }
 .lab-vm-copy--pending { opacity: 0.6; }
 .lab-vm-copy__wait { margin: 0; padding: 0.85rem; color: var(--text-muted); }
+
+/* ---- the diagram as /cluster/'s: nodes are buttons, a run lights its path, traffic at rest ---- */
+
+/* The hero's diagram (2026-10-20): under the title and the lead, before the run panel. */
+.lab-hero .lab-diagram {
+  margin-top: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+.ld-node[role="button"] {
+  cursor: pointer;
+}
+
+.ld-node[role="button"]:hover rect,
+.ld-node[role="button"]:focus-visible rect {
+  stroke-width: 2.4;
+}
+
+.ld-node[role="button"]:focus-visible rect {
+  stroke-dasharray: 5 3;
+}
+
+.ld-node[role="button"]:focus {
+  outline: none;
+}
+
+.ld-node[aria-expanded="true"] rect {
+  stroke: var(--text);
+  stroke-width: 2.4;
+}
+
+/* Lit states (ui/diagram.ts, from what the page knows of the run): the run itself, what detects, what
+   records, what reaches you; a heavier line, a glow and a stronger fill than the role's rest colour.
+   The words are in the status line under the drawing, never carried by colour alone. */
+.ld-node[data-state="run"] {
+  --lit: var(--attack);
+}
+
+.ld-node[data-state="detect"] {
+  --lit: var(--detect);
+}
+
+.ld-node[data-state="record"] {
+  --lit: var(--role-record);
+}
+
+.ld-node[data-state="deliver"] {
+  --lit: var(--role-entry);
+}
+
+.ld-node:is([data-state="run"], [data-state="detect"], [data-state="record"], [data-state="deliver"]) rect {
+  stroke: var(--lit);
+  stroke-width: 2.8;
+  fill: color-mix(in srgb, var(--lit) calc(var(--role-tint) * 2.2), var(--surface));
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--lit) 65%, transparent));
+}
+
+.ld-node:is([data-state="run"], [data-state="detect"], [data-state="record"], [data-state="deliver"]) .ld-sub {
+  fill: var(--text);
+}
+
+.ld-edge[data-lit="true"] .ld-line {
+  stroke: var(--attack);
+  stroke-width: 2.2;
+}
+
+.ld-edge[data-lit="true"][data-tone="detect"] .ld-line {
+  stroke: var(--detect);
+}
+
+.ld-edge[data-lit="true"][data-tone="record"] .ld-line {
+  stroke: var(--role-record);
+}
+
+.ld-edge[data-lit="true"][data-tone="deliver"] .ld-line {
+  stroke: var(--role-entry);
+}
+
+/* The traffic (routes and timing: the generated diagram-traffic.css, offset-path, so the dot moves by
+   transform): the way in at rest, the run's path while a run is live. Not drawn where motion is not
+   wanted; paused off screen and in a hidden tab (ui/diagram.ts sets data-ambient). */
+.ld-dot,
+.ld-glow {
+  display: none;
+}
+
+.ld-dot {
+  fill: var(--accent);
+  offset-rotate: 0deg;
+  opacity: 0;
+  filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 1px var(--accent));
+}
+
+.ld-dot--run {
+  fill: var(--attack);
+  filter: drop-shadow(0 0 3px var(--attack)) drop-shadow(0 0 1px var(--attack));
+}
+
+.ld-glow {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.2;
+  opacity: 0;
+}
+
+.ld-glow--run {
+  stroke: var(--attack);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.reduced-motion) .lab-diagram:not([data-run="active"]) :is(.ld-dot--in, .ld-glow--in),
+  html:not(.reduced-motion) .lab-diagram[data-run="active"] :is(.ld-dot--run, .ld-glow--run) {
+    display: inline;
+    animation: var(--tr-name, none) var(--tr-period, 6s) linear infinite;
+    animation-play-state: var(--amb-state, running);
+  }
+
+  .lab-diagram[data-ambient="off"] {
+    --amb-state: paused;
+  }
+}
+
+/* What the drawing shows right now, in words. Its lines are reserved, so a line more or less never
+   moves the page. */
+.ld-status {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+  min-height: 3em;
+}
+
+/* On a phone the longest status runs to three lines: all three reserved. */
+@media (max-width: 760px) {
+  .ld-status {
+    min-height: 4.5em;
+  }
+}
+
+.ld-status__what {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ld-caption {
+  margin-top: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  position: relative;
+}
+
+.ld-caption__title {
+  font-weight: 650;
+  margin: 0 0 0.3rem;
+  padding-right: 2rem;
+}
+
+.ld-caption__sub {
+  font: 0.72rem var(--font-mono);
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.ld-caption__text {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  margin: 0 0 0.5rem;
+  max-width: 48rem;
+}
+
+.ld-caption__sources {
+  margin: 0;
+}
+
+.ld-caption__sources code {
+  font-size: 0.78rem;
+}
+
+.ld-caption__close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  line-height: 1;
+  padding: 0.1rem 0.5rem;
+}
+
+/* Without JavaScript the "pick a part" hint does nothing: hide it. */
+html:not(.js) .needs-js {
+  display: none;
+}
