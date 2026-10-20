@@ -97,11 +97,32 @@ export interface LabHistoryRun {
   ok: boolean;
 }
 
+/** One run's records as siem01 indexed them, from GET /cluster/api/lab/raw (read-only). Nested as
+ * stored; only the fields the panel shows are typed. */
+export interface LabRawRecord {
+  "@timestamp": string;
+  event?: { code?: string; action?: string };
+  lab?: { run_id?: string; variant?: number; marker?: string };
+  [k: string]: unknown;
+}
+export interface LabRawRecords {
+  run_id: string;
+  records: LabRawRecord[];
+}
+
+export function isLabRawRecords(v: unknown): v is LabRawRecords {
+  return isObj(v) && isStr(v.run_id) && Array.isArray(v.records) && v.records.every((r) => isObj(r));
+}
+
 /** The isolated VM's live state, from GET /cluster/api/lab/vm (read-only). */
 export interface LabVmStatus {
   state: "off" | "running";
   last_restore?: string;
   next_run?: string;
+  /** The newest run began with a rollback to the clean snapshot. */
+  snapshot_clean?: boolean;
+  last_run?: { id: string; started_at: string; finished_at?: string };
+  checked_at?: string;
 }
 
 export function isLabVmStatus(v: unknown): v is LabVmStatus {

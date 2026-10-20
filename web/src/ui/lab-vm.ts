@@ -5,7 +5,7 @@
 // Nothing here runs by itself; it only renders the run document. Pure DOM building (no innerHTML).
 
 import { h } from "../lib/dom";
-import { type LabReplay, type LabVariant, type LabVmStatus, shortHash } from "../lib/lab";
+import { isLabRawRecords, type LabRawRecords, type LabReplay, type LabVariant, type LabVmStatus, shortHash } from "../lib/lab";
 
 const RUN_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -32,7 +32,7 @@ function note(d: LabReplay): HTMLElement {
   const dur = d.run.duration_s ? `${mmss(d.run.duration_s)} on the VM · ` : "";
   return h("p", { class: "lab-note" },
     h("span", { class: "tag tag--detect" }, "Live"),
-    " A real run on an isolated VM — " + dur,
+    " · A real run on an isolated VM · " + dur,
     h("time", { datetime: d.run.finished_at }, RUN_DATE.format(new Date(d.run.finished_at))));
 }
 
@@ -64,6 +64,7 @@ export function updateVmStatus(strip: HTMLElement, status: LabVmStatus | null, a
   state.textContent = status.state === "running" ? "VM running — live run in progress" : "VM powered off";
   const bits: string[] = [];
   if (status.last_restore) bits.push(`restored ${DAY.format(new Date(status.last_restore))} ${RUN_TIME.format(new Date(status.last_restore))}`);
+  if (status.snapshot_clean !== undefined) bits.push(status.snapshot_clean ? "clean snapshot" : "not from the clean snapshot");
   if (status.next_run) bits.push(`next run ${RUN_TIME.format(new Date(status.next_run))} UTC`);
   bits.push(`checked ${agoS}s ago`);
   meta.textContent = bits.join(" · ");
@@ -98,12 +99,36 @@ function ev(v: LabVariant, code: string): Record<string, string | number> | unde
 /** The source of the lab canary (variant B), on the repository's reproducible-build section. */
 const CANARY_SRC = "https://github.com/HubertMJ/detection-lab/blob/main/vm/README.md#reproducible-build";
 
-function rawEvents(v: LabVariant): HTMLElement {
+/** The run's records exactly as siem01 indexed them (GET /cluster/api/lab/raw), fetched once, on the
+ * first "Raw Sysmon" a visitor opens. Never a gate: absent or for another run, the copy's events from
+ * the run document stand in, and the summary says which one is shown. */
+const RAW_URL = "/cluster/api/lab/raw";
+let rawOnce: Promise<LabRawRecords | null> | null = null;
+function fetchRaw(): Promise<LabRawRecords | null> {
+  rawOnce ??= fetch(RAW_URL, { headers: { accept: "application/json" } })
+    .then(async (r) => (r.ok ? (await r.json()) as unknown : null))
+    .then((v) => (isLabRawRecords(v) ? v : null))
+    .catch(() => null);
+  return rawOnce;
+}
+
+function rawEvents(d: LabReplay, v: LabVariant): HTMLElement {
   const pre = h("pre", { class: "lab-vm-raw__pre mono" });
   pre.textContent = JSON.stringify(v.events, null, 2);
-  return h("details", { class: "lab-vm-raw" },
-    h("summary", {}, `Raw Sysmon — ${v.events.length} event${v.events.length === 1 ? "" : "s"} as indexed in sdp-lab`),
-    pre);
+  const label = h("span", {}, `Raw Sysmon — ${v.events.length} event${v.events.length === 1 ? "" : "s"} from the run document`);
+  const box = h("details", { class: "lab-vm-raw" }, h("summary", {}, label), pre) as HTMLDetailsElement;
+  box.addEventListener("toggle", () => {
+    if (!box.open || box.dataset.loaded) return;
+    box.dataset.loaded = "1";
+    void fetchRaw().then((raw) => {
+      if (!raw || raw.run_id !== d.run?.id) return;
+      const recs = raw.records.filter((r) => r.lab?.variant === v.n && r.event?.code !== undefined);
+      if (recs.length === 0) return;
+      pre.textContent = JSON.stringify(recs, null, 2);
+      label.textContent = `Raw Sysmon — ${recs.length} record${recs.length === 1 ? "" : "s"} as indexed in sdp-lab`;
+    });
+  });
+  return box;
 }
 
 function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
@@ -138,7 +163,7 @@ function copyCard(d: LabReplay, v: LabVariant): HTMLElement {
       chip(v.caught_by_hash ? "hit" : "miss", v.caught_by_hash ? "✓ known-hash" : "known-hash"),
       firedPersist ? chip("hit", "✓ persistence from /tmp") : null,
       firedBeacon ? chip(incidentHere ? "crit" : "hit", incidentHere ? "✓ beaconing → incident" : "✓ beaconing") : null),
-    rawEvents(v));
+    rawEvents(d, v));
 }
 
 function copies(d: LabReplay): HTMLElement {
@@ -161,21 +186,25 @@ function verdict(d: LabReplay): HTMLElement {
 
 // ---- the animated replay (the "it really runs" moment) ----
 
-interface FeedItem { offset: number; feed: "console" | "detect"; text: string; variant?: number; kind?: string; }
+interface FeedItem { offset: number; feed: "console" | "detect"; text: string; variant?: number; kind?: string; event?: boolean; }
 
 /** Merge the run into one ordered list of things that happened, each at its real offset: the VM
  * lifecycle and per-copy actions (the console), and the SIEM findings (the detection feed). */
 function feedItems(d: LabReplay): FeedItem[] {
   const items: FeedItem[] = [];
-  for (const m of d.lifecycle ?? []) items.push({ offset: m.offset_s, feed: "console", text: m.label });
+  for (const m of d.lifecycle ?? []) items.push({ offset: m.offset_s, feed: "console", text: m.label, kind: m.marker === "poweroff_requested" ? "poweroff" : undefined });
   const ruleTitle = new Map(d.rules.map((r) => [r.id, r.title]));
   for (const v of d.variants) {
     for (const e of v.events) {
       const off = Number(e["offset_s"] ?? 0);
       const act = String(e["event.action"] ?? "");
-      if (act === "process-create") items.push({ offset: off, feed: "console", text: `copy ${v.n} ran — ${v.renamed}`, variant: v.n, kind: "exec" });
-      else if (act === "file-create") items.push({ offset: off, feed: "console", text: `copy ${v.n} wrote a persistence unit`, variant: v.n });
-      else if (act === "network-connection") items.push({ offset: off, feed: "console", text: `copy ${v.n} beaconed`, variant: v.n });
+      // Every Sysmon event is one console line and counts once, so the replay's "events" ends on the
+      // run's own count (counters.events is the sum of these).
+      const text = act === "process-create" ? `copy ${v.n} ran — ${v.renamed}`
+        : act === "file-create" ? `copy ${v.n} wrote a persistence unit`
+        : act === "network-connection" ? `copy ${v.n} beaconed`
+        : `copy ${v.n} · ${act || "event"}`;
+      items.push({ offset: off, feed: "console", text, variant: v.n, kind: act === "process-create" ? "exec" : undefined, event: true });
     }
     for (const f of v.findings) {
       const at = f.at_offset_s;
@@ -213,6 +242,18 @@ function replay(d: LabReplay): HTMLElement | null {
   const speedSel = h("select", { class: "lab-rp-speed", "aria-label": "playback speed" },
     h("option", { value: "1" }, "1×"), h("option", { value: "2", selected: true }, "2×"), h("option", { value: "4" }, "4×")) as HTMLSelectElement;
 
+  // The box never scrolls (by itself or otherwise): it shows the newest lines that fit whole, dropping
+  // the oldest, so no line is ever cut at an edge. Measured once the box is laid out (the first render
+  // happens before it is in the page, so it is fitted again on attach and on resize).
+  function fit(feed: HTMLElement): void {
+    if (!feed.isConnected || feed.clientHeight === 0) return;
+    while (feed.childElementCount > 1 && feed.scrollHeight > feed.clientHeight) feed.firstElementChild?.remove();
+  }
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => { fit(console_); fit(detect); });
+    ro.observe(console_); ro.observe(detect);
+  }
+
   let revealed = -1;
   function renderTo(off: number): void {
     // reset when scrubbing backwards
@@ -224,18 +265,20 @@ function replay(d: LabReplay): HTMLElement | null {
       const it = items[revealed];
       const line = h("li", { class: it.kind === "incident" ? "lab-rp-line lab-rp-line--crit" : "lab-rp-line" },
         h("span", { class: "lab-rp-line__t mono" }, mmss(it.offset)), h("span", {}, it.text));
-      (it.feed === "console" ? console_ : detect).append(line);
-      if (it.feed === "console") { (it.feed === "console" ? console_ : detect).scrollTop = 1e9; }
+      const feed = it.feed === "console" ? console_ : detect;
+      feed.append(line);
+      fit(feed);
     }
     // counts + lanes from everything up to `off`
     for (let i = 0; i <= revealed; i++) {
       const it = items[i];
       if (it.kind === "exec") { proc++; const l = lanes[(it.variant ?? 1) - 1]; if (l) { l.dataset.state = "running"; (l.querySelector(".lab-rp-lane__s") as HTMLElement).textContent = "running"; } }
-      if (it.feed === "console" && (it.text.includes("ran") || it.text.includes("persistence") || it.text.includes("beaconed"))) ev++;
+      if (it.event) ev++;
+      if (it.kind === "poweroff") for (const l of lanes) if (l.dataset.state === "running") { l.dataset.state = "done"; (l.querySelector(".lab-rp-lane__s") as HTMLElement).textContent = "finished"; }
       if (it.feed === "detect") { det++; if (it.kind === "incident") { inc++; const l = lanes[(it.variant ?? 1) - 1]; if (l) { l.dataset.state = "incident"; (l.querySelector(".lab-rp-lane__s") as HTMLElement).textContent = "in incident"; } } }
     }
     const uniq = d.counters?.unique_hashes ?? d.variants.length;
-    cProc.textContent = String(proc); cEv.textContent = String(Math.min(ev, d.counters?.events ?? ev));
+    cProc.textContent = String(proc); cEv.textContent = String(ev);
     cDet.textContent = String(det); cInc.textContent = String(inc);
     cProc.dataset.u = String(uniq);
     clock.textContent = mmss(Math.round(off));

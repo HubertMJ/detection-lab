@@ -1767,7 +1767,7 @@ html.slide-out-backward body > :not(.site-header) {
 .lab-vm-raw { margin-top: 0.4rem; border-top: 1px dashed var(--border); }
 .lab-vm-raw > summary { cursor: pointer; padding: 0.55rem 0.85rem; font: 0.72rem/1.2 var(--font-mono); color: var(--text-muted); }
 .lab-vm-raw > summary:hover { color: var(--text); }
-.lab-vm-raw__pre { margin: 0; padding: 0 0.85rem 0.85rem; font-size: 0.7rem; line-height: 1.5; overflow-x: auto; color: var(--text-muted); white-space: pre; }
+.lab-vm-raw__pre { margin: 0; padding: 0 0.85rem 0.85rem; font-size: 0.7rem; line-height: 1.5; max-height: 22rem; overflow: auto; overscroll-behavior: contain; color: var(--text-muted); white-space: pre; }
 
 /* ---- variant B animated replay (the "watch it run" player) ---- */
 .lab-rp { margin-bottom: 1.5rem; }
@@ -1783,7 +1783,7 @@ html.slide-out-backward body > :not(.site-header) {
 .lab-rp-feeds { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
 .lab-rp-col { min-width: 0; }
 .lab-rp-h { font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 0.4rem; }
-.lab-rp-feed { list-style: none; margin: 0; padding: 0.6rem 0.75rem; height: 11rem; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 0.3rem; }
+.lab-rp-feed { list-style: none; margin: 0; padding: 0.6rem 0.75rem; height: 11rem; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 0.3rem; }
 .lab-rp-line { display: grid; grid-template-columns: 3rem 1fr; gap: 0.5rem; font-size: 0.8rem; align-items: baseline; }
 .lab-rp-line__t { color: var(--text-muted); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
 .lab-rp-line--crit > span:last-child { color: var(--critical); font-weight: 600; }
@@ -1791,6 +1791,7 @@ html.slide-out-backward body > :not(.site-header) {
 .lab-rp-lane { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); opacity: 0.55; transition: opacity 0.2s, border-color 0.2s; }
 .lab-rp-lane[data-state="running"] { opacity: 1; border-color: var(--good); }
 .lab-rp-lane[data-state="incident"] { opacity: 1; border-color: var(--critical); }
+.lab-rp-lane[data-state="done"] { opacity: 1; }
 .lab-rp-lane__n { font-size: 0.8rem; font-weight: 600; }
 .lab-rp-lane__s { font-size: 0.72rem; color: var(--text-muted); }
 .lab-rp-lane[data-state="incident"] .lab-rp-lane__s { color: var(--critical); }
