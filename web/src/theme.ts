@@ -1,6 +1,9 @@
 // Loaded as a classic, render-blocking script in <head> so a stored theme choice applies before
 // first paint. The same "theme" key as the cluster page, so the choice follows the visitor across pages.
+import { prepaintAscii } from "./ascii/prepaint";
+
 document.documentElement.classList.add("js");
+prepaintAscii();
 
 try {
   const t = localStorage.getItem("theme");

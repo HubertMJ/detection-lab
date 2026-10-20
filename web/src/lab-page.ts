@@ -6,6 +6,7 @@
 // API at all -- the page falls back to the bundled synthetic sample (lib/lab-replay.json, sample:
 // true), which labels itself as generated, not a run on real machines.
 
+import { setupAscii } from "./ascii";
 import labReplay from "./lib/lab-replay.json";
 import { byId } from "./lib/dom";
 import { isLabRawRecords, isLabReplay, isLabRunControl, isLabVmStatus, type LabReplay, type LabRunControl, type LabVmStatus } from "./lib/lab";
@@ -17,6 +18,7 @@ import { mountLabVm, updateVmStatus } from "./ui/lab-vm";
 
 document.documentElement.classList.add("js");
 setupThemeToggle();
+setupAscii("Detection lab");
 
 // The hero's diagram: its nodes open a caption; the run's path lights from what this page polls.
 const diagram = mountDiagram(byId("lab-diagram"), { caption: byId("lab-diagram-caption"), status: byId("lab-diagram-status") });

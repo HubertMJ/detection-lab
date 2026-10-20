@@ -406,7 +406,11 @@ export function incidentStory(d: LabReplay): HTMLElement | null {
     finalState();
   } else {
     reset();
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); play(); } }, { threshold: 0.35 });
+    // In view: a third of it, or half the screen's height of it when it is taller than three screens
+    // (ASCII mode's phone drawing), so it always plays.
+    const io = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting && (e.intersectionRatio >= 0.35 || e.intersectionRect.height >= (e.rootBounds?.height ?? innerHeight) * 0.5))) { io.disconnect(); play(); }
+    }, { threshold: [0, 0.1, 0.2, 0.35] });
     io.observe(root);
   }
   return root;

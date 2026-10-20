@@ -268,6 +268,74 @@ test.describe("detection lab preview at /lab/", () => {
     await expect(li).toHaveAttribute("data-fired", "true", { timeout: 9000 });
   });
 
+  // ASCII mode, the hidden terminal look (src/ascii): off by default, on by a link or by typing
+  // "ascii"; the diagrams become character drawings that still open their captions, and nothing on
+  // the page grows wider than the screen.
+  test("ASCII mode: a link turns it on, the drawings work, typing ascii turns it off and it is remembered", async ({ page }, info) => {
+    const run = readFileSync(new URL("./fixtures/vm-run-real-pinned.json", import.meta.url), "utf8");
+    await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+    // No script error, and nothing of the mode's own fails to load (the API's other endpoints are
+    // absent here, as in the standalone image).
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("response", (r) => { if (r.status() >= 400 && !r.url().includes("/cluster/api/")) errors.push(`${r.status()} ${r.url()}`); });
+    await page.goto("/lab/");
+    await expect(page.locator("html")).not.toHaveClass(/ascii/);
+    await expect(page.locator("pre.ascii-dg")).toHaveCount(0);
+
+    await page.goto("/lab/?ascii=1");
+    await expect(page.locator("html")).toHaveClass(/ascii/);
+    const hero = page.locator("#lab-diagram pre.ascii-dg:not([hidden])");
+    await expect(hero).toHaveCount(1);
+    await expect(hero).toContainText("Cloudflare edge");
+    await expect(page.locator(".ascii-banner")).toBeVisible();
+    // The incident's drawing arrives with the run, and plays to its incident.
+    const inc = page.locator(".li pre.ascii-dg:not([hidden])");
+    await expect(inc).toHaveCount(1);
+    await expect(inc).toContainText("lab beacon :8080");
+    await inc.scrollIntoViewIfNeeded();
+    await expect(page.locator("section.li")).toHaveAttribute("data-fired", "true", { timeout: 12000 });
+    await expect(inc).toContainText("4 copies · 4 hashes");
+    await page.evaluate(() => scrollTo(0, 0));
+    // The SVGs stay for screen readers and keyboards, out of sight.
+    expect(await page.locator(".lab-diagram__svg--wide").evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1);
+    // Every drawing fits its column, and the page never scrolls sideways.
+    for (const pre of await page.locator("pre.ascii-dg:not([hidden])").all()) {
+      expect(await pre.evaluate((el) => el.scrollWidth <= (el.parentElement as HTMLElement).clientWidth + 1)).toBe(true);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    // A click on a box opens that part's caption, as a click on the SVG does.
+    await hero.evaluate((pre) => {
+      const lines = (pre.textContent ?? "").split("\n");
+      const r = lines.findIndex((l) => l.includes("Cloudflare edge"));
+      const rect = pre.getBoundingClientRect();
+      scrollTo({ top: scrollY + rect.top + (r / (lines.length - 1)) * rect.height - innerHeight / 2, behavior: "instant" });
+    });
+    const box = await hero.evaluate((pre) => {
+      const lines = (pre.textContent ?? "").split("\n");
+      const r = lines.findIndex((l) => l.includes("Cloudflare edge"));
+      const c = lines[r].indexOf("Cloudflare edge") + 3;
+      const rect = pre.getBoundingClientRect();
+      return { x: rect.left + ((c + 0.5) / [...lines[0]].length) * rect.width, y: rect.top + ((r + 0.5) / (lines.length - 1)) * rect.height };
+    });
+    await page.mouse.click(box.x, box.y);
+    await expect(page.locator("#lab-diagram-caption")).toBeVisible();
+    await expect(page.locator("#lab-diagram-caption")).toContainText("Cloudflare");
+    // Typing "ascii" (outside a field) turns it off, and the choice holds on the next visit.
+    await page.locator("body").press("Escape");
+    await page.keyboard.type("ascii");
+    await expect(page.locator("html")).not.toHaveClass(/ascii/);
+    await expect(page.locator("pre.ascii-dg, .ascii-bg, .ascii-banner")).toHaveCount(0);
+    await expect(page.locator(".lab-diagram__svg--" + (info.project.name === "phone" ? "narrow" : "wide"))).toBeVisible();
+    await page.goto("/lab/");
+    await expect(page.locator("html")).not.toHaveClass(/ascii/);
+    await page.keyboard.type("ascii");
+    await expect(page.locator("html")).toHaveClass(/ascii/);
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/ascii/);
+    expect(errors).toEqual([]);
+  });
+
   // No endpoint (the standalone image): the page falls back to the bundled synthetic sample, labelled
   // as generated, and still renders the whole preview.
   test("falls back to the bundled synthetic sample when the API 404s", async ({ page }) => {
