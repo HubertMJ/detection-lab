@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { diagramProblems } from "./diagram-check";
 
 // The detection lab's preview, served standalone at /lab/. The main site (/) lives in another image
 // on the same origin; for the slide tests, scripts/serve.mjs --e2e stands it in with a page carrying
@@ -618,4 +619,23 @@ test("the console greets a person once per page load, with the build's commit, w
   await page.waitForTimeout(300);
   expect(logs.filter((l) => l.includes("You opened the console")).length).toBe(1);
   expect(errors).toEqual([]);
+});
+
+// Both drawings (the hero's and the incident's) set in the fonts they ship, measured at phone and desktop
+// widths: the words in their boxes with room, every label clear of boxes, arrowheads, lines and other
+// labels (diagram-check.ts). Tagged @fonts: it runs again with other system fonts (the *-fonts projects).
+test("the diagrams draw in their own fonts and keep their clearances at every width @fonts", async ({ page }) => {
+  // A real run, so the incident's drawing is there, in its final state.
+  const run = readFileSync(new URL("./fixtures/vm-run-real-pinned.json", import.meta.url), "utf8");
+  await page.route("**/cluster/api/lab/latest", (r) => r.fulfill({ status: 200, contentType: "application/json", body: run }));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [360, 390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/lab/");
+    await expect(page.locator("section.li")).toHaveAttribute("data-fired", "true");
+    const problems = await diagramProblems(page);
+    expect(await page.evaluate(() => document.fonts.check("650 14px LabDiagramSans") && document.fonts.check("10.5px LabDiagramMono"))).toBe(true);
+    expect(await page.locator(".ld-label:visible").first().evaluate((t) => getComputedStyle(t).fontFamily)).toMatch(/^"?LabDiagramSans/);
+    expect(problems, `at ${width}`).toEqual([]);
+  }
 });

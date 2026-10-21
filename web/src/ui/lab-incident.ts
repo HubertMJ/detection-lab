@@ -147,7 +147,9 @@ export function incidentStory(d: LabReplay): HTMLElement | null {
       const trunk = sinkB.x - 36 - (outer - Math.abs(i - mid)) * 12;
       const yIn = cy(sinkB) + (i - mid) * 12;
       edges.push({ id: `${c.n}-sink`, tone: "run", pts: [[right(b), y0], [trunk, y0], [trunk, yIn], [sinkB.x, yIn]],
-        label: `${c.beacons.length} beacons`, at: [right(b) + 6, y0 - 6], anchor: "start" });
+        // Above the line where the edge turns down, below it where it turns up: never where its own
+        // trunk climbs through the words.
+        label: `${c.beacons.length} beacons`, at: [right(b) + 6, yIn < y0 ? y0 + 14 : y0 - 8], anchor: "start" });
     });
     const headY = cy(sinkB);
     edges.push({ id: "sink-mon", tone: "detect", pts: [[right(sinkB), headY], [mon.x, headY]], label: "by ip:port", at: [(right(sinkB) + mon.x) / 2, headY - 7], anchor: "middle" });

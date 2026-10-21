@@ -13,6 +13,8 @@
 @import "./ascii/ascii.css";
 /* The diagrams' node panel (src/node-panel): a part's details under the drawing, in the normal look. */
 @import "./node-panel/node-panel.css";
+/* The diagrams' own fonts (src/diagram-fonts): every device draws the words the tests measured. */
+@import "./diagram-fonts/diagram-fonts.css";
 
 
 :root {
@@ -1885,7 +1887,7 @@ html.slide-out-backward body > :not(.site-header) {
 }
 
 .ld-zonetitle {
-  font: 600 11px var(--font-mono);
+  font: 600 11px var(--diagram-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   fill: var(--text-muted);
@@ -1927,13 +1929,13 @@ html.slide-out-backward body > :not(.site-header) {
 }
 
 .ld-label {
-  font: 650 13.5px var(--font-sans);
+  font: 650 13.5px var(--diagram-sans);
   fill: var(--text);
   text-anchor: middle;
 }
 
 .ld-sub {
-  font: 400 10.5px var(--font-mono);
+  font: 400 10.5px var(--diagram-mono);
   fill: var(--text-muted);
   text-anchor: middle;
 }
@@ -1955,7 +1957,12 @@ html.slide-out-backward body > :not(.site-header) {
 }
 
 .ld-edgelabel {
-  font: 500 10.5px var(--font-mono);
+  font: 500 10.5px var(--diagram-mono);
+  /* A halo in the page's colour: a line passing under a label never makes it unreadable. */
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
   fill: var(--text-muted);
   paint-order: stroke;
   stroke: var(--bg);
