@@ -12,6 +12,7 @@ import labReplay from "./lib/lab-replay.json";
 import { byId } from "./lib/dom";
 import { isLabRawRecords, isLabReplay, isLabRunControl, isLabVmStatus, type LabReplay, type LabRunControl, type LabVmStatus } from "./lib/lab";
 import { setupThemeToggle } from "./lib/theme-toggle";
+import { mountNodePanels } from "./node-panel";
 import { mountDiagram, type RunPhase } from "./ui/diagram";
 import { mountLab } from "./ui/lab";
 import { replayFromRaw, updateRunControl } from "./ui/lab-live";
@@ -24,8 +25,10 @@ setupAscii("Detection lab");
 // A greeting for whoever opens the console, with the commit this image was built from.
 sayHello({ repo: "detection-lab", buildInfo: "/lab/build.json" });
 
-// The hero's diagram: its nodes open a caption; the run's path lights from what this page polls.
-const diagram = mountDiagram(byId("lab-diagram"), { caption: byId("lab-diagram-caption"), status: byId("lab-diagram-status") });
+// The hero's diagram: a part's details under it (the shared node panel, src/node-panel); the run's path
+// lights from what this page polls.
+mountNodePanels(byId("lab-diagram"));
+const diagram = mountDiagram(byId("lab-diagram"), { status: byId("lab-diagram-status") });
 
 const LATEST = "/cluster/api/lab/latest";
 // The fetch is an upgrade, never a gate: the page renders the sample at once and must reach `load`

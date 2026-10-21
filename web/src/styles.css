@@ -11,6 +11,8 @@
 @import "diagram-traffic.css";
 /* ASCII mode, the hidden terminal look (src/ascii): inert unless html.ascii is set. */
 @import "./ascii/ascii.css";
+/* The diagrams' node panel (src/node-panel): a part's details under the drawing, in the normal look. */
+@import "./node-panel/node-panel.css";
 
 
 :root {

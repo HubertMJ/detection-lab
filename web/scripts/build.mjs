@@ -63,7 +63,7 @@ const result = await esbuild.build({
 const diagram = await loadDiagram();
 const problems = diagram.validate();
 if (problems.length) throw new Error(`src/diagram/model.ts: ${problems.join("; ")}`);
-const names = { "diagram.wide": diagram.svg(diagram.wide()), "diagram.narrow": diagram.svg(diagram.narrow()) };
+const names = { "diagram.wide": diagram.svg(diagram.wide()), "diagram.narrow": diagram.svg(diagram.narrow()), "diagram.panel": diagram.panel() };
 for (const [file, meta] of Object.entries(result.metafile.outputs)) {
   if (!meta.entryPoint) continue;
   const ext = file.endsWith(".css") ? "css" : "js";
