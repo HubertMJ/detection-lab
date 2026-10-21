@@ -6,8 +6,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { EDGES, NARROW, NODES, ZONES, sourceUrl, validate } from "../../src/diagram/model";
-import { TRAFFIC, mermaid, narrow, svg, trafficCss, wide, wrapSub } from "../../src/diagram/layout";
-import { RUN_PATH, phaseOf, renderCaption } from "../../src/ui/diagram";
+import { TRAFFIC, mermaid, narrow, panel, svg, trafficCss, wide, wrapSub } from "../../src/diagram/layout";
+import { RUN_PATH, phaseOf } from "../../src/ui/diagram";
 
 describe("the lab diagram's model", () => {
   it("is consistent: known zones and nodes, the phone order without repeats, every node with words", () => {
@@ -138,14 +138,15 @@ describe("captions: every node says what it is and where it lives", () => {
     expect(src("gateway")).toContain("sdp:cluster/infra/gateway/");
   });
 
-  it("a caption is text and links, no markup from the model", () => {
-    const vm = NODES.find((n) => n.id === "vm");
-    if (!vm) throw new Error("no vm");
-    const el = renderCaption(vm);
-    expect(el.querySelector(".ld-caption__text")?.textContent).toBe(vm.blurb);
-    const links = [...el.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(links).toEqual(vm.sources.map(sourceUrl));
-    expect(el.querySelector("script")).toBeNull();
+  it("the node panel holds every part's words and links, as text, no markup from the model", () => {
+    const doc = new DOMParser().parseFromString(panel(), "text/html");
+    for (const n of NODES) {
+      const item = doc.querySelector(`.np-item[data-for="${n.id}"]`);
+      expect(item?.querySelector(".np-text")?.textContent, n.id).toBe(n.blurb);
+      expect(item?.getAttribute("data-role"), n.id).toBe(n.role);
+      expect([...(item?.querySelectorAll(".np-links a") ?? [])].map((a) => a.getAttribute("href")), n.id).toEqual(n.sources.map(sourceUrl));
+    }
+    expect(doc.querySelector("script")).toBeNull();
   });
 });
 

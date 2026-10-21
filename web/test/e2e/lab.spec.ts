@@ -323,9 +323,11 @@ test.describe("detection lab preview at /lab/", () => {
       await page.mouse.move(box.x, box.y);
       await expect(page.locator(".ascii-tip:not([hidden])")).toContainText("Cloudflare terminates TLS");
     }
+    // A click reaches the part, as a click on the SVG does; ASCII mode speaks through its own popup,
+    // and the normal look's panel stays out of sight.
     await page.mouse.click(box.x, box.y);
-    await expect(page.locator("#lab-diagram-caption")).toBeVisible();
-    await expect(page.locator("#lab-diagram-caption")).toContainText("Cloudflare");
+    await expect(page.locator('#lab-diagram .np-item[data-for="edge"]')).toHaveAttribute("data-on", "true");
+    expect(await page.locator("#lab-diagram .np-slot").evaluate((el) => getComputedStyle(el).display)).toBe("none");
     // Typing "ascii" (outside a field) turns it off, and the choice holds on the next visit.
     await page.locator("body").press("Escape");
     await page.keyboard.type("ascii");
@@ -480,42 +482,78 @@ test.describe("the hero diagram", () => {
     expect(fig && panel && fig.y + fig.height <= panel.y).toBe(true);
   });
 
-  test("a node opens its caption by click and by keyboard, with links to where it lives; Escape and × close it", async ({ page }, info) => {
+  // The details are the shared node panel's (src/node-panel), as on the landing page and /work/: the slot
+  // is reserved from the start, so opening, swapping and closing never move the page.
+  test("a node's details slide out under the drawing by click, keyboard or pointer, with links to where it lives; × and Escape close them; nothing moves", async ({ page }, info) => {
     await page.goto("/lab/");
     const svg = page.locator(`.lab-diagram__svg--${view(info.project.name)}`);
-    const caption = page.locator("#lab-diagram-caption");
-    await expect(caption).toBeHidden();
+    const panel = page.locator("#lab-diagram .np-panel");
+    const shown = page.locator("#lab-diagram .np-item[data-on='true']");
+    const still = () => page.evaluate(() => [document.documentElement.scrollHeight, Math.round(scrollY)]);
+    await expect(panel).toHaveAttribute("data-open", "false");
     const vm = svg.locator('.ld-node[data-node="vm"]');
+    await vm.scrollIntoViewIfNeeded();
+    const at0 = await still();
     await vm.click();
-    await expect(caption).toBeVisible();
+    await expect(panel).toHaveAttribute("data-open", "true");
     await expect(vm).toHaveAttribute("aria-expanded", "true");
-    await expect(caption).toContainText("Sysmon for Linux records what the kernel saw");
-    const hrefs = await caption.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+    await expect(shown).toContainText("Sysmon for Linux records what the kernel saw");
+    const hrefs = await shown.locator(".np-links a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
     expect(hrefs).toEqual([
       "https://github.com/HubertMJ/detection-lab/tree/main/vm/README.md",
       "https://github.com/HubertMJ/detection-lab/tree/main/vm/scenario.c",
       "https://github.com/HubertMJ/detection-lab/tree/main/vm/run_scenario.py",
       "https://github.com/HubertMJ/detection-lab/tree/main/vm/fluent-bit/sysmon_to_lab.lua",
     ]);
-    // Keyboard: Enter opens the focused node, Escape closes it, Space opens it again.
+    expect((await still())[0]).toBe(at0[0]);
+    // The box hugs the entry that shows, while the slot keeps the tallest entry's height: the shortest
+    // entry sits in a box shorter than the slot.
+    const sizes = () =>
+      page.locator("#lab-diagram").evaluate((f) => {
+        const hgt = (el: Element | null) => el?.getBoundingClientRect().height ?? 0;
+        const items = [...f.querySelectorAll<HTMLElement>(".np-item")];
+        const short = items.reduce((a, b) => (hgt(b) < hgt(a) ? b : a));
+        return { box: hgt(f.querySelector(".np-box")), item: hgt(f.querySelector(".np-item[data-on='true']")), slot: hgt(f.querySelector(".np-slot")), shortest: short.dataset.for ?? "", spread: Math.max(...items.map(hgt)) - hgt(short) };
+      });
+    await expect.poll(async () => { const z = await sizes(); return Math.abs(z.box - z.item) < 2; }).toBe(true);
+    const short = (await sizes()).shortest;
+    await svg.locator(`.ld-node[data-node="${short}"]`).evaluate((el) => (el as SVGElement).focus({ preventScroll: true }));
+    // Where every entry is as tall as the next (the vLLM drawer's, two lines each), the box is the slot.
+    await expect.poll(async () => { const z = await sizes(); return Math.abs(z.box - z.item) < 2 && (z.spread < 10 || z.box < z.slot - 10); }).toBe(true);
+    expect((await still())[0]).toBe(at0[0]);
+    // Keyboard: focus shows a part, Escape closes, Enter or Space opens it again.
     const validator = svg.locator('.ld-node[data-node="validator"]');
-    await validator.focus();
-    await page.keyboard.press("Enter");
-    await expect(caption).toContainText("lines the findings and the alert up against the run's ground truth");
-    await expect(caption.locator('a[href="https://github.com/HubertMJ/detection-lab/tree/main/lab/vm_validate.py"]')).toHaveCount(1);
+    await validator.evaluate((el) => (el as SVGElement).focus({ preventScroll: true }));
+    await expect(shown).toContainText("lines the findings and the alert up against the run's ground truth");
+    await expect(shown.locator('a[href="https://github.com/HubertMJ/detection-lab/tree/main/lab/vm_validate.py"]')).toHaveCount(1);
     await expect(vm).toHaveAttribute("aria-expanded", "false");
     await page.keyboard.press("Escape");
-    await expect(caption).toBeHidden();
+    await expect(panel).toHaveAttribute("data-open", "false");
     await page.keyboard.press(" ");
-    await expect(caption).toBeVisible();
-    await caption.locator(".ld-caption__close").click();
-    await expect(caption).toBeHidden();
-    await expect(validator).toBeFocused();
-    // The trigger points at the provisioning script; the way in at the targets /cluster/'s diagram uses.
-    await svg.locator('.ld-node[data-node="trigger"]').click();
-    await expect(caption.locator('a[href="https://github.com/HubertMJ/self-defending-portfolio/tree/main/scripts/lab-vm-provision.sh"]')).toHaveCount(1);
-    await svg.locator('.ld-node[data-node="cloudflared"]').click();
-    await expect(caption.locator('a[href="https://github.com/HubertMJ/self-defending-portfolio/tree/main/cluster/infra/cloudflared/"]')).toHaveCount(1);
+    await expect(panel).toHaveAttribute("data-open", "true");
+    await page.locator("#lab-diagram .np-close").dispatchEvent("click");
+    await expect(panel).toHaveAttribute("data-open", "false");
+    expect((await still())[0]).toBe(at0[0]);
+    // A pointer that hovers swaps the details as it moves; the trigger points at the provisioning script,
+    // the way in at the targets /cluster/'s diagram uses.
+    if (info.project.name === "desktop") {
+      await svg.locator('.ld-node[data-node="trigger"] rect').hover();
+      await expect(shown.locator('a[href="https://github.com/HubertMJ/self-defending-portfolio/tree/main/scripts/lab-vm-provision.sh"]')).toHaveCount(1);
+      await svg.locator('.ld-node[data-node="cloudflared"] rect').hover();
+      await expect(shown.locator('a[href="https://github.com/HubertMJ/self-defending-portfolio/tree/main/cluster/infra/cloudflared/"]')).toHaveCount(1);
+    } else {
+      await svg.locator('.ld-node[data-node="trigger"] rect').tap();
+      await expect(shown.locator('a[href="https://github.com/HubertMJ/self-defending-portfolio/tree/main/scripts/lab-vm-provision.sh"]')).toHaveCount(1);
+    }
+    expect((await still())[0]).toBe(at0[0]);
+  });
+
+  test("with reduced motion the panel shows at once", async ({ page }, info) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/lab/");
+    await page.locator(`.lab-diagram__svg--${view(info.project.name)} .ld-node[data-node="vm"]`).evaluate((el) => (el as SVGElement).focus({ preventScroll: true }));
+    await expect(page.locator("#lab-diagram .np-panel")).toHaveAttribute("data-open", "true");
+    expect(await page.locator("#lab-diagram .np-panel").evaluate((p) => getComputedStyle(p).transitionDuration.split(",").every((d) => parseFloat(d) === 0))).toBe(true);
   });
 
   test("at rest a dot runs the way in; under reduced motion nothing moves", async ({ page }, info) => {
@@ -561,4 +599,23 @@ test.describe("the hero diagram", () => {
     // All of it at once: no step still to come.
     for (const id of ["vm", "stream", "detector", "validator", "runs", "api", "page"]) await expect(svg.locator(`.ld-node[data-node="${id}"]`)).not.toHaveAttribute("data-state", "idle");
   });
+});
+
+// The console greeting (src/console-hello) stays quiet under automation, so it never shows in the
+// suites' console checks. Here automation is masked to see a person's view: once, with the commit.
+test("the console greets a person once per page load, with the build's commit, without an error", async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(Navigator.prototype, "webdriver", { configurable: true, get: () => false }));
+  const logs: string[] = [];
+  const errors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "log") logs.push(m.text());
+  });
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/lab/");
+  await expect.poll(() => logs.filter((l) => l.includes("You opened the console")).length).toBe(1);
+  expect(logs.some((l) => l.includes("github.com/HubertMJ/detection-lab"))).toBe(true);
+  expect(logs.some((l) => /Built from commit [0-9a-f]{7}\./.test(l))).toBe(true);
+  await page.waitForTimeout(300);
+  expect(logs.filter((l) => l.includes("You opened the console")).length).toBe(1);
+  expect(errors).toEqual([]);
 });

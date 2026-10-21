@@ -1,7 +1,8 @@
 // The hero's architecture diagram, as /cluster/'s (self-defending-portfolio app/web/src/ui/diagram.ts):
 // the SVG is in the static HTML (scripts/build.mjs draws it from src/diagram at build time, so it is
-// there without JavaScript); this module attaches behaviour to it by node id. A node opens a caption
-// under the drawing - what it is and where it lives on GitHub - by click, tap, Enter or Space. The run
+// there without JavaScript); this module attaches behaviour to it by node id. A node's details - what it
+// is and where it lives on GitHub - slide out under the drawing in the shared node panel
+// (src/node-panel, mounted by lab-page.ts): pointing, tapping, focusing, Enter or Space. The run
 // lights its path from what the page knows (the run control, the VM's state, the live records), and a
 // validated run replays its path once, box by box.
 //
@@ -9,7 +10,6 @@
 // traffic dots (styles.css, routes from src/diagram/layout.ts), off screen, in a hidden tab and under
 // reduced motion stopped. Nothing here scrolls the page or moves the layout.
 
-import { NODES, sourceUrl, type LabNode } from "../diagram/model";
 import { h, prefersReducedMotion, replace } from "../lib/dom";
 
 export type NodeState = "idle" | "run" | "detect" | "record" | "deliver";
@@ -64,29 +64,6 @@ export function phaseOf(phase: RunPhase): { nodes: Map<string, NodeState>; edges
   return { nodes, edges, summary: "the VM has powered off; the validator is judging what the SIEM caught" };
 }
 
-const nodeMeta = (id: string): LabNode | undefined => NODES.find((n) => n.id === id);
-
-/** The caption for a node: its words and where it lives, a link per source. */
-export function renderCaption(n: LabNode): HTMLElement {
-  return h(
-    "div",
-    { class: "ld-caption__body" },
-    h("p", { class: "ld-caption__title" }, n.label, n.sub ? h("span", { class: "ld-caption__sub" }, ` · ${n.sub}`) : null),
-    h("p", { class: "ld-caption__text" }, n.blurb),
-    n.sources.length
-      ? h(
-          "p",
-          { class: "ld-caption__sources small" },
-          "On GitHub: ",
-          ...n.sources.flatMap((s, i) => {
-            const [repo, ...path] = s.split(":");
-            return [i ? ", " : "", h("a", { href: sourceUrl(s), rel: "noopener noreferrer" }, h("code", {}, `${repo === "sdp" ? "self-defending-portfolio" : "detection-lab"}/${path.join(":")}`))];
-          }),
-        )
-      : null,
-  );
-}
-
 export interface DiagramHandle {
   /** Where the run is now; the same phase twice changes nothing. */
   setPhase(phase: RunPhase): void;
@@ -98,45 +75,16 @@ export interface DiagramHandle {
 const STEP_MS = 420;
 const HOLD_MS = 4000;
 
-/** `figure` holds the two drawings (wide and phone); `caption` and `status` are mounts under them. */
-export function mountDiagram(figure: HTMLElement, opts: { caption: HTMLElement; status: HTMLElement }): DiagramHandle {
+/** `figure` holds the two drawings (wide and phone) and the node panel; `status` is the line under them. */
+export function mountDiagram(figure: HTMLElement, opts: { status: HTMLElement }): DiagramHandle {
   const allNodes = [...figure.querySelectorAll<SVGGElement>(".ld-node")];
   const allEdges = [...figure.querySelectorAll<SVGGElement>(".ld-edge")];
   const nodeEls = (id: string) => allNodes.filter((el) => el.dataset.node === id);
-  let open: string | undefined;
 
-  const closeCaption = () => {
-    open = undefined;
-    opts.caption.hidden = true;
-    replace(opts.caption);
-    for (const el of allNodes) el.setAttribute("aria-expanded", "false");
-  };
-
+  // A part's details: the node panel opens on focus, so focusing the drawn box (no scroll) shows them.
   const show = (id: string) => {
-    const n = nodeMeta(id);
-    if (!n) return;
-    if (open === id) return closeCaption();
-    open = id;
-    for (const el of allNodes) el.setAttribute("aria-expanded", String(el.dataset.node === id));
-    const close = h("button", { type: "button", class: "btn btn--ghost btn--small ld-caption__close", "aria-label": "Close" }, "×");
-    close.addEventListener("click", () => {
-      closeCaption();
-      nodeEls(id).find((el) => el.getClientRects().length)?.focus({ preventScroll: true });
-    });
-    replace(opts.caption, renderCaption(n), close);
-    opts.caption.hidden = false;
+    nodeEls(id).find((el) => el.getClientRects().length)?.focus({ preventScroll: true });
   };
-
-  for (const el of allNodes) {
-    const id = el.dataset.node ?? "";
-    el.addEventListener("click", () => show(id));
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        show(id);
-      } else if (e.key === "Escape" && open === id) closeCaption();
-    });
-  }
 
   // The traffic runs only while the figure is on screen in a visible tab.
   let onScreen = true;

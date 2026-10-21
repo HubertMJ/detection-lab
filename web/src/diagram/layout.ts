@@ -1,9 +1,10 @@
+import { panelMarkup } from "../node-panel/markup";
 // Draws model.ts: the wide drawing (a grid of zones), the phone's (one column, the long links in lanes
 // down the margins), and the README's mermaid. Markup as strings for scripts/build.mjs, so the page
 // carries the drawing before any script runs and builds no DOM for it. Colours and fonts live in
 // styles.css (classes only): the page's CSP allows no style attribute.
 
-import { EDGES, NARROW, NODES, TITLE, ZONES, describe, type LabEdge, type LabNode } from "./model";
+import { EDGES, NARROW, NODES, TITLE, ZONES, describe, sourceUrl, type LabEdge, type LabNode } from "./model";
 
 type Pt = [number, number];
 interface Box {
@@ -346,4 +347,25 @@ export function mermaid(): string {
     out.push(`    ${mid(e.from)} ${e.both ? "<" : ""}${l} "${mtext(e.label)}" ${r} ${mid(e.to)}`);
   }
   return out.join("\n");
+}
+
+// ---------- the node panel ----------
+
+/** The node panel under both drawings (src/node-panel): each part's words, and where it lives on GitHub. */
+export function panel(): string {
+  return panelMarkup(
+    "lab",
+    NODES.map((n) => ({
+      id: n.id,
+      title: n.label,
+      sub: n.sub,
+      text: n.blurb,
+      role: n.role,
+      linksLead: "On GitHub: ",
+      links: n.sources.map((s) => {
+        const [repo, ...path] = s.split(":");
+        return { href: sourceUrl(s), label: `${repo === "sdp" ? "self-defending-portfolio" : "detection-lab"}/${path.join(":")}` };
+      }),
+    })),
+  );
 }

@@ -8,6 +8,7 @@
 //   node scripts/build.mjs --outdir <dir>   into <dir> instead (relative to the repository root)
 
 import * as esbuild from "esbuild";
+import { execFileSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,7 +63,7 @@ const result = await esbuild.build({
 const diagram = await loadDiagram();
 const problems = diagram.validate();
 if (problems.length) throw new Error(`src/diagram/model.ts: ${problems.join("; ")}`);
-const names = { "diagram.wide": diagram.svg(diagram.wide()), "diagram.narrow": diagram.svg(diagram.narrow()) };
+const names = { "diagram.wide": diagram.svg(diagram.wide()), "diagram.narrow": diagram.svg(diagram.narrow()), "diagram.panel": diagram.panel() };
 for (const [file, meta] of Object.entries(result.metafile.outputs)) {
   if (!meta.entryPoint) continue;
   const ext = file.endsWith(".css") ? "css" : "js";
@@ -78,4 +79,13 @@ for (const p of PAGES) {
 }
 // Served under /lab/ too (favicon at /lab/favicon.svg), so the image is self-contained behind the prefix.
 await cp(join(root, "static"), join(out, "lab"), { recursive: true });
+// /lab/build.json: the commit this was built from, which the console greeting shows. The image's final
+// stage writes it again from CI's own values (the builder stage has no .git); a local build takes git's.
+let commit = "";
+try {
+  commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+} catch {
+  // Not a checkout: the greeting goes out without the commit.
+}
+await writeFile(join(out, "lab", "build.json"), `${JSON.stringify({ commit: /^[0-9a-f]{40}$/.test(commit) ? commit : "", ci_run_id: "" })}\n`);
 console.log(`built: ${Object.entries(names).filter(([k]) => !k.startsWith("diagram.")).map(([, v]) => v).join(", ")}`);
