@@ -160,7 +160,8 @@ export function incidentStory(d: LabReplay): HTMLElement | null {
   /** Phone: one column. The copies, then the hash rule (a lane from copy 1 down the right margin), the
    * address (a lane per copy down the left margin), the monitor with its gauge, the incident. */
   const narrow = (): Drawing => {
-    const w = 256, lane = 11, x = 10 + lane * n + 2, gap = 28, ch = 76;
+    // out: the lanes nearest the boxes keep this far from them, room for a whole arrow back into the box.
+    const w = 236, lane = 8, out = 28, x = 12 + out + lane * (n - 1), gap = 28, ch = 76;
     const boxes = new Map<string, Box>();
     const heads: Drawing["heads"] = [];
     let y = 10;
@@ -168,16 +169,16 @@ export function incidentStory(d: LabReplay): HTMLElement | null {
     for (const c of copies) { boxes.set(`c${c.n}`, { x, y, w, h: ch }); y += ch + gap; }
     y += 8; heads.push({ x, y: y + 12, title: "siem01", sub: "one address · one incident" }); y += 24;
     for (const id of ["hash", "sink", "mon", "inc"]) { const hh = id === "mon" ? ch + GAUGE_H : ch; boxes.set(id, { x, y, w, h: hh }); y += hh + gap; }
-    const height = y - gap + 10, width = x + w + lane * Math.max(1, caught.length) + 10;
+    const height = y - gap + 10, width = x + w + out + lane * Math.max(0, caught.length - 1) + 10;
     const edges: Edge[] = [];
     const hash = boxes.get("hash") as Box, sink = boxes.get("sink") as Box, mon = boxes.get("mon") as Box, inc = boxes.get("inc") as Box;
     caught.forEach((c, k) => {
-      const b = boxes.get(`c${c.n}`) as Box, lx = right(b) + lane * (k + 1);
+      const b = boxes.get(`c${c.n}`) as Box, lx = right(b) + out + lane * k;
       edges.push({ id: `${c.n}-hash`, tone: "detect", pts: [[right(b), cy(b)], [lx, cy(b)], [lx, cy(hash) - k * 8], [right(hash), cy(hash) - k * 8]] });
     });
     const mid = (n - 1) / 2;
     copies.forEach((c, i) => {
-      const b = boxes.get(`c${c.n}`) as Box, lx = x - lane * (n - i), yIn = cy(sink) - (i - mid) * 12;
+      const b = boxes.get(`c${c.n}`) as Box, lx = x - out - lane * (n - 1 - i), yIn = cy(sink) - (i - mid) * 12;
       edges.push({ id: `${c.n}-sink`, tone: "run", pts: [[b.x, cy(b)], [lx, cy(b)], [lx, yIn], [sink.x, yIn]] });
     });
     edges.push({ id: "sink-mon", tone: "detect", pts: [[cx(sink), bottom(sink)], [cx(sink), mon.y]], label: "by ip:port", at: [cx(sink) + 9, (bottom(sink) + mon.y) / 2 + 4], anchor: "start" });

@@ -23,7 +23,7 @@ const fingerprint = (base: string) => {
   return h.digest("hex");
 };
 /** Change a file in one repository, copy it to the others, and update this line in each. */
-const PINNED = "b17b37cfd57b62920f278556bcf9c708fb7d65887bef7dadb4c78490655fa0e2";
+const PINNED = "f4f5ae13ec50482bbf64a5c3a1e23c726145eb632a3175443eef27c5e12fe58e";
 
 describe("the diagrams' fonts and their measure", () => {
   test("are the copies every repository carries", () => {

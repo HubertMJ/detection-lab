@@ -78,7 +78,8 @@ function trim(pts: Pt[], head: boolean, tail: boolean): Pt[] {
 // ---------- the wide drawing ----------
 
 // gx: room between columns for a label on the shaft of a two-way arrow ("tunnel") with air either side.
-const W = { cw: 168, gx: 80, gy: 46, pad: 16, zoneHead: 26, zonePad: 12, subChars: 23 };
+// zoneHead: room for an "over" link's run above its row (a whole arrow down into the box) under the title.
+const W = { cw: 168, gx: 80, gy: 46, pad: 16, zoneHead: 32, zonePad: 12, subChars: 23 };
 
 export function wide(): Drawing {
   const subs = new Map(NODES.map((n) => [n.id, wrapSub(n.sub, W.subChars)]));
@@ -103,7 +104,7 @@ export function wide(): Drawing {
     const r = e.route ?? "auto";
     if (r === "over") {
       // Up out of a, across above the row (under the zone's title line), down into b.
-      const y = Math.min(a.y, b.y) - 22;
+      const y = Math.min(a.y, b.y) - 28;
       return { edge: e, pts: [[cx(a), a.y], [cx(a), y], [cx(b), y], [cx(b), b.y]], at: [(cx(a) + cx(b)) / 2, y - 5], anchor: "middle" };
     }
     if (Math.abs(cy(a) - cy(b)) < 1) {
@@ -134,7 +135,8 @@ export function wide(): Drawing {
 
 // ---------- the phone's drawing ----------
 
-const N = { x: 40, w: 256, gap: 28, head: 30, pad: 10, subChars: 36, lane: 11 };
+// out: a lane's distance from the boxes, room for a whole arrow back into its box; lane: between lanes.
+const N = { x: 40, w: 256, gap: 28, head: 30, pad: 10, subChars: 36, out: 28, lane: 11 };
 
 export function narrow(): Drawing {
   const nodes = NARROW.map((id) => NODES.find((n) => n.id === id) as LabNode);
@@ -191,13 +193,13 @@ export function narrow(): Drawing {
     // Each lane enters and leaves its boxes at its own height, so two lanes never share an end.
     const dy = -6 + 6 * lane;
     if (b.y > a.y) {
-      const x = a.x - N.lane * (lane + 1);
+      const x = a.x - N.out - N.lane * lane;
       return { edge: e, pts: [[a.x, cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [b.x, cy(b) + dy]], anchor: "start" };
     }
-    const x = right(a) + N.lane * (lane + 1);
+    const x = right(a) + N.out + N.lane * lane;
     return { edge: e, pts: [[right(a), cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [right(b), cy(b) + dy]], anchor: "start" };
   });
-  return { view: "narrow", width: N.x + N.w + N.lane * lanes.right.length + 10, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
+  return { view: "narrow", width: N.x + N.w + N.out + N.lane * (lanes.right.length - 1) + 10, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
 }
 
 // ---------- markup ----------
