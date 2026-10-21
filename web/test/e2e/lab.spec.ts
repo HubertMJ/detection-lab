@@ -506,6 +506,21 @@ test.describe("the hero diagram", () => {
       "https://github.com/HubertMJ/detection-lab/tree/main/vm/fluent-bit/sysmon_to_lab.lua",
     ]);
     expect((await still())[0]).toBe(at0[0]);
+    // The box hugs the entry that shows, while the slot keeps the tallest entry's height: the shortest
+    // entry sits in a box shorter than the slot.
+    const sizes = () =>
+      page.locator("#lab-diagram").evaluate((f) => {
+        const hgt = (el: Element | null) => el?.getBoundingClientRect().height ?? 0;
+        const items = [...f.querySelectorAll<HTMLElement>(".np-item")];
+        const short = items.reduce((a, b) => (hgt(b) < hgt(a) ? b : a));
+        return { box: hgt(f.querySelector(".np-box")), item: hgt(f.querySelector(".np-item[data-on='true']")), slot: hgt(f.querySelector(".np-slot")), shortest: short.dataset.for ?? "", spread: Math.max(...items.map(hgt)) - hgt(short) };
+      });
+    await expect.poll(async () => { const z = await sizes(); return Math.abs(z.box - z.item) < 2; }).toBe(true);
+    const short = (await sizes()).shortest;
+    await svg.locator(`.ld-node[data-node="${short}"]`).evaluate((el) => (el as SVGElement).focus({ preventScroll: true }));
+    // Where every entry is as tall as the next (the vLLM drawer's, two lines each), the box is the slot.
+    await expect.poll(async () => { const z = await sizes(); return Math.abs(z.box - z.item) < 2 && (z.spread < 10 || z.box < z.slot - 10); }).toBe(true);
+    expect((await still())[0]).toBe(at0[0]);
     // Keyboard: focus shows a part, Escape closes, Enter or Space opens it again.
     const validator = svg.locator('.ld-node[data-node="validator"]');
     await validator.evaluate((el) => (el as SVGElement).focus({ preventScroll: true }));
