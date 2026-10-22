@@ -38,6 +38,13 @@ const right = (b: Box) => b.x + b.w;
 const bottom = (b: Box) => b.y + b.h;
 /** An arrow stops this short of a box, so the head never touches it. */
 const GAP = 6;
+/** An arrowhead's length and the air a label keeps from it: a label over a line is centred on the shaft
+ * before the head (and after the tail's, on a two-way edge), never over it. */
+const HEAD = 11;
+const shaftMid = (x0: number, x1: number, both: boolean): number => {
+  const d = Math.sign(x1 - x0) || 1;
+  return (x0 + (both ? d * (GAP + HEAD) : 0) + x1 - d * (GAP + HEAD)) / 2;
+};
 /** Between baselines of a box's lines. */
 const LINE = 15;
 
@@ -70,7 +77,9 @@ function trim(pts: Pt[], head: boolean, tail: boolean): Pt[] {
 
 // ---------- the wide drawing ----------
 
-const W = { cw: 168, gx: 52, gy: 46, pad: 16, zoneHead: 26, zonePad: 12, subChars: 23 };
+// gx: room between columns for a label on the shaft of a two-way arrow ("tunnel") with air either side.
+// zoneHead: room for an "over" link's run above its row (a whole arrow down into the box) under the title.
+const W = { cw: 168, gx: 80, gy: 46, pad: 16, zoneHead: 32, zonePad: 12, subChars: 23 };
 
 export function wide(): Drawing {
   const subs = new Map(NODES.map((n) => [n.id, wrapSub(n.sub, W.subChars)]));
@@ -95,14 +104,14 @@ export function wide(): Drawing {
     const r = e.route ?? "auto";
     if (r === "over") {
       // Up out of a, across above the row (under the zone's title line), down into b.
-      const y = Math.min(a.y, b.y) - 22;
+      const y = Math.min(a.y, b.y) - 28;
       return { edge: e, pts: [[cx(a), a.y], [cx(a), y], [cx(b), y], [cx(b), b.y]], at: [(cx(a) + cx(b)) / 2, y - 5], anchor: "middle" };
     }
     if (Math.abs(cy(a) - cy(b)) < 1) {
       const fwd = cx(b) > cx(a);
       const x0 = fwd ? right(a) : a.x;
       const x1 = fwd ? b.x : right(b);
-      return { edge: e, pts: [[x0, cy(a)], [x1, cy(a)]], at: [(x0 + x1) / 2, cy(a) - 8], anchor: "middle" };
+      return { edge: e, pts: [[x0, cy(a)], [x1, cy(a)]], at: [shaftMid(x0, x1, !!e.both), cy(a) - 8], anchor: "middle" };
     }
     if (Math.abs(cx(a) - cx(b)) < 1) {
       const down = cy(b) > cy(a);
@@ -119,14 +128,15 @@ export function wide(): Drawing {
     // vh: out of a's bottom or top (off-centre), along to b's row, into its side.
     const x0 = cx(a) + 14;
     const x1 = fwd ? b.x : right(b);
-    return { edge: e, pts: [[x0, down ? bottom(a) : a.y], [x0, cy(b)], [x1, cy(b)]], at: [(x0 + x1) / 2, cy(b) - 8], anchor: "middle" };
+    return { edge: e, pts: [[x0, down ? bottom(a) : a.y], [x0, cy(b)], [x1, cy(b)]], at: [shaftMid(x0, x1, false), cy(b) - 8], anchor: "middle" };
   });
   return { view: "wide", width: zoneRight + W.pad, height: zoneBottom + W.pad, zones, heads: [], boxes, subs, edges };
 }
 
 // ---------- the phone's drawing ----------
 
-const N = { x: 40, w: 256, gap: 28, head: 30, pad: 10, subChars: 36, lane: 11 };
+// out: a lane's distance from the boxes, room for a whole arrow back into its box; lane: between lanes.
+const N = { x: 40, w: 256, gap: 28, head: 30, pad: 10, subChars: 36, out: 28, lane: 11 };
 
 export function narrow(): Drawing {
   const nodes = NARROW.map((id) => NODES.find((n) => n.id === id) as LabNode);
@@ -183,13 +193,13 @@ export function narrow(): Drawing {
     // Each lane enters and leaves its boxes at its own height, so two lanes never share an end.
     const dy = -6 + 6 * lane;
     if (b.y > a.y) {
-      const x = a.x - N.lane * (lane + 1);
+      const x = a.x - N.out - N.lane * lane;
       return { edge: e, pts: [[a.x, cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [b.x, cy(b) + dy]], anchor: "start" };
     }
-    const x = right(a) + N.lane * (lane + 1);
+    const x = right(a) + N.out + N.lane * lane;
     return { edge: e, pts: [[right(a), cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [right(b), cy(b) + dy]], anchor: "start" };
   });
-  return { view: "narrow", width: N.x + N.w + N.lane * lanes.right.length + 10, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
+  return { view: "narrow", width: N.x + N.w + N.out + N.lane * (lanes.right.length - 1) + 10, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
 }
 
 // ---------- markup ----------
