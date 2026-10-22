@@ -135,12 +135,42 @@ export function wide(): Drawing {
 
 // ---------- the phone's drawing ----------
 
-// out: a lane's distance from the boxes, room for a whole arrow back into its box; lane: between lanes.
-const N = { x: 40, w: 256, gap: 28, head: 30, pad: 10, subChars: 36, out: 28, lane: 11 };
+// out: a lane's distance from the boxes, room for a whole arrow back into its box; lane: between lanes;
+// slot: between two ends on one side of a box.
+const N = { x: 12, w: 256, gap: 28, head: 30, pad: 10, subChars: 36, out: 28, lane: 16, slot: 24 };
 
 export function narrow(): Drawing {
   const nodes = NARROW.map((id) => NODES.find((n) => n.id === id) as LabNode);
   const subs = new Map(nodes.map((n) => [n.id, wrapSub(n.sub, N.subChars)]));
+  const order = new Map(NARROW.map((id, i) => [id, i]));
+  const drawn = EDGES.filter((e) => order.has(e.from) && order.has(e.to));
+  // The long links run in lanes down the margins, downwards on the left and upwards on the right. Two
+  // links on one side must not cross: their spans keep apart (or meet at a box) or one holds the other,
+  // whose lane is then further out. A link that would overlap one on its own side goes to the other.
+  const span = (e: LabEdge): [number, number] => {
+    const [a, b] = [order.get(e.from) as number, order.get(e.to) as number];
+    return [Math.min(a, b), Math.max(a, b)];
+  };
+  const inside = (p: [number, number], q: [number, number]) => q[0] <= p[0] && p[1] <= q[1];
+  const clear = (p: [number, number], q: [number, number]) => p[1] <= q[0] || q[1] <= p[0] || inside(p, q) || inside(q, p);
+  const long = drawn.filter((e) => span(e)[1] - span(e)[0] > 1);
+  long.sort((p, q) => span(q)[1] - span(q)[0] - (span(p)[1] - span(p)[0]));
+  const side = new Map<LabEdge, "left" | "right">();
+  for (const e of long) {
+    const down = (order.get(e.to) as number) > (order.get(e.from) as number);
+    const fits = (s: "left" | "right") => [...side].every(([o, os]) => os !== s || clear(span(e), span(o)));
+    const want = down ? "left" : "right";
+    const other = down ? "right" : "left";
+    side.set(e, fits(want) || !fits(other) ? want : other);
+  }
+  // A lane's place: 0 beside the boxes, one further out than every lane it holds.
+  const lane = new Map<LabEdge, number>();
+  const laneOf = (e: LabEdge): number => {
+    if (!lane.has(e)) lane.set(e, Math.max(-1, ...long.filter((o) => o !== e && side.get(o) === side.get(e) && inside(span(o), span(e))).map(laneOf)) + 1);
+    return lane.get(e) as number;
+  };
+  const lanes = (s: "left" | "right") => Math.max(0, ...long.filter((e) => side.get(e) === s).map((e) => laneOf(e) + 1));
+  const x0 = N.x + (lanes("left") ? N.out + N.lane * (lanes("left") - 1) : 0);
   // Each box as tall as its own words: the column is long, so no box carries another's spare line.
   const heightOf = (id: string) => 10 + (subs.get(id) as string[]).length * LINE + 3 + 18;
   const boxes = new Map<string, Box>();
@@ -153,53 +183,43 @@ export function narrow(): Drawing {
       zone = n.zone;
       const z = ZONES.find((zz) => zz.id === zone);
       if (heads.length) y += 8;
-      heads.push({ x: N.x, y: y + 12, title: z?.title ?? zone, sub: z?.subNarrow ?? "" });
+      heads.push({ x: x0, y: y + 12, title: z?.title ?? zone, sub: z?.subNarrow ?? "" });
       y += N.head - 6;
     }
     const h = heightOf(id);
-    boxes.set(id, { x: N.x, y, w: N.w, h });
+    boxes.set(id, { x: x0, y, w: N.w, h });
     y += h + N.gap;
   }
-  const order = new Map(NARROW.map((id, i) => [id, i]));
-  // The long links run in lanes, the left margin downwards and the right one upwards; links whose
-  // spans overlap get lanes of their own, and each enters its box at its own height.
-  const lanes = { left: [] as number[], right: [] as number[] };
-  const laneOf = (side: "left" | "right", from: number, to: number): number => {
-    const lo = Math.min(from, to);
-    const hi = Math.max(from, to);
-    const ends = lanes[side];
-    let i = ends.findIndex((end) => end <= lo);
-    if (i < 0) i = ends.push(hi) - 1;
-    else ends[i] = hi;
-    return i;
-  };
-  const drawn = EDGES.filter((e) => order.has(e.from) && order.has(e.to));
-  const long = drawn.filter((e) => Math.abs((order.get(e.to) as number) - (order.get(e.from) as number)) > 1);
-  long.sort((p, q) => Math.min(order.get(p.from) as number, order.get(p.to) as number) - Math.min(order.get(q.from) as number, order.get(q.to) as number));
-  const laneIdx = new Map(long.map((e) => {
-    const a = order.get(e.from) as number;
-    const b = order.get(e.to) as number;
-    return [e, laneOf(b > a ? "left" : "right", a, b)] as const;
-  }));
+  // Where a lane meets a box: the lanes on one side of it a slot apart around its middle, those from
+  // above over those from below and, of two from one way, the one from further outermost.
+  const ends = new Map<string, number>();
+  for (const id of NARROW) {
+    const at = order.get(id) as number;
+    for (const s of ["left", "right"] as const) {
+      const here = long.filter((e) => side.get(e) === s && (e.from === id || e.to === id));
+      const far = (e: LabEdge) => order.get(e.from === id ? e.to : e.from) as number;
+      here.sort((p, q) => Number(far(p) > at) - Number(far(q) > at) || far(q) - far(p));
+      here.forEach((e, i) => ends.set(`${e.from}>${e.to}@${id}`, cy(boxes.get(id) as Box) + (i - (here.length - 1) / 2) * N.slot));
+    }
+  }
   const edges = drawn.map((e): Drawn => {
     const a = boxes.get(e.from) as Box;
     const b = boxes.get(e.to) as Box;
-    const lane = laneIdx.get(e);
-    if (lane === undefined) {
+    const s = side.get(e);
+    if (!s) {
       // Next in line: straight down (or up) the middle.
       const [y0, y1] = b.y > a.y ? [bottom(a), b.y] : [a.y, bottom(b)];
       return { edge: e, pts: [[cx(a), y0], [cx(a), y1]], at: [cx(a) + 9, (y0 + y1) / 2 + 4], anchor: "start" };
     }
-    // Each lane enters and leaves its boxes at its own height, so two lanes never share an end.
-    const dy = -6 + 6 * lane;
-    if (b.y > a.y) {
-      const x = a.x - N.out - N.lane * lane;
-      return { edge: e, pts: [[a.x, cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [b.x, cy(b) + dy]], anchor: "start" };
+    const [ya, yb] = [ends.get(`${e.from}>${e.to}@${e.from}`) as number, ends.get(`${e.from}>${e.to}@${e.to}`) as number];
+    if (s === "left") {
+      const x = a.x - N.out - N.lane * laneOf(e);
+      return { edge: e, pts: [[a.x, ya], [x, ya], [x, yb], [b.x, yb]], anchor: "start" };
     }
-    const x = right(a) + N.out + N.lane * lane;
-    return { edge: e, pts: [[right(a), cy(a) + dy], [x, cy(a) + dy], [x, cy(b) + dy], [right(b), cy(b) + dy]], anchor: "start" };
+    const x = right(a) + N.out + N.lane * laneOf(e);
+    return { edge: e, pts: [[right(a), ya], [x, ya], [x, yb], [right(b), yb]], anchor: "start" };
   });
-  return { view: "narrow", width: N.x + N.w + N.out + N.lane * (lanes.right.length - 1) + 10, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
+  return { view: "narrow", width: x0 + N.w + (lanes("right") ? N.out + N.lane * (lanes("right") - 1) : 0) + 10, height: y - N.gap + N.pad, zones: [], heads, boxes, subs, edges };
 }
 
 // ---------- markup ----------
